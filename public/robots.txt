@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /buscar
+Disallow: /favoritos
+Disallow: /historico
+
+Sitemap: https://nexo.app/sitemap.xml
