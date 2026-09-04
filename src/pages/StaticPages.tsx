@@ -1,186 +1,130 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { Mail, Send } from "lucide-react";
 import { allRoutes } from "@/lib/content";
 import { useSEO } from "@/lib/seo";
-import { useStore } from "@/lib/store";
-import { Container, PageHeader } from "@/components/layout/Shell";
-import { Accordion } from "@/components/ui/feedback";
-import { AdSlot, AffiliateBox, ProductBox } from "@/components/ui/monetization";
-import { Button, Field, Input, Select, Textarea } from "@/components/ui/primitives";
+import { useLocalStorage, useStore } from "@/lib/store";
+import { Breadcrumbs } from "@/components/layout/Shell";
+import { Button, Field, Input, PageHeader, Select, Textarea } from "@/components/ui/primitives";
+import { AdSlot } from "@/components/ui/monetization";
 
-function Prose({ children }: { children: React.ReactNode }) {
-  return <div className="prose-editorial mt-8 max-w-3xl">{children}</div>;
+function Static({ title, eyebrow, description, path, children }: { title: string; eyebrow: string; description: string; path: string; children: React.ReactNode }) {
+  useSEO({ title, description, path, breadcrumbs: [{ label: title, path }] });
+  return (
+    <div className="container-x">
+      <Breadcrumbs items={[{ label: title }]} />
+      <PageHeader eyebrow={eyebrow} title={title} description={description} />
+      <div className="prose-nexo max-w-3xl">{children}</div>
+    </div>
+  );
 }
 
 export function AboutPage() {
-  useSEO({ title: "Sobre a Nexo", description: "Uma plataforma independente de ferramentas, prompts e conteúdo sobre IA e tecnologia — 100% no navegador.", path: "/sobre" });
   return (
-    <Container wide>
-      <PageHeader eyebrow="Sobre" title="Ferramentas que funcionam. Conteúdo que explica." crumbs={[{ label: "Sobre" }]} />
-      <Prose>
-        <p>A Nexo nasceu de uma frustração comum: buscar uma calculadora simples e cair em páginas lentas, cheias de anúncios, que escondem o resultado atrás de rolagem infinita. Ou procurar um prompt e encontrar listas copiadas sem contexto.</p>
-        <h2>Princípios</h2>
-        <ul>
-          <li><strong>Tudo roda no navegador.</strong> Nenhum dado digitado nas ferramentas sai do seu dispositivo. Favoritos, histórico e preferências ficam no localStorage.</li>
-          <li><strong>Explicação junto com o resultado.</strong> Toda ferramenta mostra a fórmula ou o método, exemplos e perguntas frequentes.</li>
-          <li><strong>Conteúdo editorial próprio.</strong> Notícias e artigos são análises escritas pela equipe, não republicação automática. A estrutura está pronta para ingestão futura via RSS/API, sempre com atribuição.</li>
-          <li><strong>Design sem ruído.</strong> Tipografia, grid e hierarquia no lugar de cards, sombras e gradientes.</li>
-          <li><strong>Monetização transparente.</strong> Espaços de anúncio e links de afiliado são rotulados. Nada de anúncios disfarçados de conteúdo.</li>
-        </ul>
-        <h2>Tecnologia</h2>
-        <p>React, TypeScript, Vite e Tailwind. Roteamento client-side, animações com Framer Motion, QR Code gerado localmente. Sem backend — por decisão, não por limitação. A camada de dados foi isolada para permitir conectar uma API sem reescrever a interface.</p>
-        <h2>Roadmap</h2>
-        <ul>
-          <li>Ingestão de notícias via RSS com curadoria editorial</li>
-          <li>Sincronização opcional de favoritos entre dispositivos</li>
-          <li>Mais ferramentas de IA local (embeddings no navegador)</li>
-          <li>Produtos digitais: kits de prompts e templates</li>
-        </ul>
-      </Prose>
-    </Container>
+    <Static title="Sobre o Nexo" eyebrow="Nexo" description="Uma plataforma de utilidade real: ferramentas que funcionam, prompts que ajudam e conteúdo escrito para ser lido." path="/sobre">
+      <h2>O que é</h2>
+      <p>O Nexo reúne calculadoras, conversores, geradores, ferramentas de texto e IA, uma central de prompts e conteúdo editorial sobre inteligência artificial e tecnologia. Tudo roda no navegador — não há servidor, banco de dados ou cadastro.</p>
+      <h2>Princípios</h2>
+      <ul><li><strong>Funciona de verdade.</strong> Cada ferramenta faz o que promete, com validação, exemplos e explicação da fórmula.</li><li><strong>Privacidade por padrão.</strong> Favoritos, histórico e dados das ferramentas ficam no seu dispositivo (localStorage).</li><li><strong>Sem fingir atualização.</strong> O conteúdo é editorial e local; destaques e recomendações mudam por rotação interna, não por feed externo.</li><li><strong>Design que sai do caminho.</strong> Tipografia, espaço e hierarquia antes de efeitos.</li></ul>
+      <h2>Tecnologia</h2>
+      <p>React 19, TypeScript, Vite, Tailwind CSS v4, Framer Motion e React Router. Componentes de animação inspirados no React Bits (reveal, split text, count up, spotlight). Sem dependências pesadas.</p>
+      <h2>Limitações conhecidas</h2>
+      <ul><li>Conversor de moedas usa taxa informada por você (sem API).</li><li>Preços de modelos de IA são referências editoriais e podem estar desatualizados.</li><li>Calculadoras trabalhistas mostram valores brutos e simplificados.</li></ul>
+      <p>Dúvidas ou sugestões? <Link to="/contato">Fale conosco</Link>.</p>
+    </Static>
   );
 }
 
 export function ContactPage() {
-  useSEO({ title: "Contato", description: "Fale com a equipe da Nexo: sugestões de ferramentas, correções, parcerias e publicidade.", path: "/contato" });
+  const [msgs, setMsgs] = useLocalStorage<{ name: string; email: string; topic: string; message: string; at: number }[]>("contact-drafts", []);
+  const [f, setF] = useState({ name: "", email: "", topic: "sugestao", message: "" });
   const { toast } = useStore();
-  const [f, setF] = useState({ name: "", email: "", subject: "sugestao", message: "" });
-  const [sent, setSent] = useState(false);
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!f.name.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email) || f.message.trim().length < 10) { toast({ title: "Preencha nome, e-mail válido e uma mensagem com pelo menos 10 caracteres.", tone: "error" }); return; }
-    try { const list = JSON.parse(localStorage.getItem("nexo:contact-drafts") ?? "[]"); list.push({ ...f, at: Date.now() }); localStorage.setItem("nexo:contact-drafts", JSON.stringify(list)); } catch { /* noop */ }
-    setSent(true);
-    toast({ title: "Mensagem registrada localmente", description: "Sem backend nesta versão — conecte um endpoint em ContactPage para envio real.", tone: "success" });
-  };
+  const submit = (e: React.FormEvent) => { e.preventDefault(); if (!f.name || !f.email || !f.message) { toast({ title: "Preencha nome, e-mail e mensagem", tone: "error" }); return; } setMsgs([{ ...f, at: Date.now() }, ...msgs].slice(0, 10)); toast({ title: "Mensagem registrada localmente", description: "Como a plataforma não tem backend, use o e-mail abaixo para envio real." }); setF({ name: "", email: "", topic: "sugestao", message: "" }); };
   return (
-    <Container wide>
-      <PageHeader eyebrow="Contato" title="Fale com a gente" description="Sugestões de ferramentas, correções de conteúdo, parcerias e publicidade." crumbs={[{ label: "Contato" }]} />
-      <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
-        {sent ? (
-          <div className="border border-mint p-8"><h2 className="font-display text-2xl font-bold">Recebido.</h2><p className="mt-2 text-muted">Sua mensagem foi guardada neste navegador. Quando a API de contato for conectada, este formulário passará a enviar automaticamente.</p><Button className="mt-5" variant="secondary" onClick={() => { setSent(false); setF({ name: "", email: "", subject: "sugestao", message: "" }); }}>Enviar outra</Button></div>
-        ) : (
-          <form onSubmit={submit} className="grid max-w-2xl gap-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Nome"><Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required /></Field>
-              <Field label="E-mail"><Input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} required /></Field>
-            </div>
-            <Field label="Assunto"><Select value={f.subject} onChange={(e) => setF({ ...f, subject: e.target.value })}><option value="sugestao">Sugerir ferramenta</option><option value="correcao">Corrigir conteúdo</option><option value="parceria">Parceria / afiliados</option><option value="publicidade">Publicidade</option><option value="outro">Outro</option></Select></Field>
-            <Field label="Mensagem"><Textarea rows={6} value={f.message} onChange={(e) => setF({ ...f, message: e.target.value })} required /></Field>
-            <div><Button type="submit" size="lg">Enviar mensagem</Button></div>
-            <p className="text-xs text-subtle">Este formulário não envia dados a servidores nesta versão. A estrutura está pronta para um endpoint (ex.: /api/contact).</p>
-          </form>
-        )}
-        <aside className="space-y-8">
-          <div><div className="eyebrow mb-2 border-b border-strong pb-2">Antes de escrever</div><Accordion items={[{ q: "Uma ferramenta deu resultado errado", a: "Envie os valores usados e o resultado esperado. Corrigimos e adicionamos um teste." }, { q: "Quero sugerir uma ferramenta", a: "Descreva o problema que ela resolve e um exemplo de uso. Priorizamos por demanda." }, { q: "Publicidade e afiliados", a: <>Veja as regras em <Link to="/anuncios" className="underline">Publicidade e afiliados</Link>.</>, }]} /></div>
-        </aside>
+    <Static title="Contato" eyebrow="Fale conosco" description="Sugestões de ferramentas, correções de conteúdo e parcerias." path="/contato">
+      <div className="not-prose grid gap-8 md:grid-cols-[1fr_280px]">
+        <form onSubmit={submit} className="space-y-4 rounded-2xl border bg-surface p-6">
+          <div className="grid gap-4 sm:grid-cols-2"><Field label="Nome"><Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field><Field label="E-mail"><Input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></Field></div>
+          <Field label="Assunto"><Select value={f.topic} onChange={(e) => setF({ ...f, topic: e.target.value })}><option value="sugestao">Sugestão de ferramenta</option><option value="erro">Reportar erro</option><option value="conteudo">Correção de conteúdo</option><option value="parceria">Publicidade / parceria</option><option value="outro">Outro</option></Select></Field>
+          <Field label="Mensagem"><Textarea rows={5} value={f.message} onChange={(e) => setF({ ...f, message: e.target.value })} /></Field>
+          <Button type="submit"><Send className="h-4 w-4" />Enviar</Button>
+          <p className="text-xs text-fg-3">Sem backend: o formulário salva um rascunho local. Para contato real, use o e-mail ao lado. Ao conectar uma API, troque o `setMsgs` por um `fetch("/api/contato")`.</p>
+        </form>
+        <div className="space-y-4"><div className="rounded-2xl border bg-surface p-5"><Mail className="h-5 w-5 text-fg-2" /><p className="mt-3 text-sm font-medium">E-mail</p><a href="mailto:contato@nexo.app" className="text-sm text-brand hover:underline">contato@nexo.app</a></div><div className="rounded-2xl border bg-surface p-5 text-sm text-fg-2"><p className="font-medium text-fg">Tempo de resposta</p><p className="mt-1">Até 3 dias úteis para sugestões e erros. Parcerias: até 7 dias.</p></div></div>
       </div>
-    </Container>
+    </Static>
   );
 }
 
 export function PrivacyPage() {
-  useSEO({ title: "Política de privacidade", description: "Como a Nexo trata dados: processamento local, localStorage, cookies de terceiros e anúncios.", path: "/privacidade" });
   return (
-    <Container wide>
-      <PageHeader eyebrow="Legal" title="Política de privacidade" description="Última atualização: março de 2026." crumbs={[{ label: "Privacidade" }]} />
-      <Prose>
-        <h2>Resumo</h2>
-        <p>As ferramentas da Nexo processam tudo no seu navegador. Não coletamos o que você digita nas calculadoras, conversores, geradores ou no Prompt Builder.</p>
-        <h2>Dados armazenados localmente</h2>
-        <ul><li>Tema (claro/escuro)</li><li>Favoritos e histórico de navegação dentro do site</li><li>Histórico de buscas e de prompts gerados</li><li>Estado de ferramentas de produtividade (tarefas, notas, pomodoro)</li><li>E-mail informado na newsletter e mensagens do formulário de contato (até que uma API seja conectada)</li></ul>
-        <p>Esses dados ficam no <code>localStorage</code> do seu navegador com o prefixo <code>nexo:</code>. Você pode apagá-los limpando os dados do site ou usando os botões de limpar disponíveis nas páginas de Favoritos e Histórico.</p>
-        <h2>Cookies e terceiros</h2>
-        <p>Nesta versão não há cookies próprios nem scripts de analytics. Quando anúncios (Google AdSense) forem ativados, o provedor poderá usar cookies conforme a política dele; exibiremos aviso de consentimento onde exigido por lei.</p>
-        <h2>Links de afiliado</h2>
-        <p>Alguns links levam a produtos de terceiros e podem gerar comissão sem custo para você. Eles são sempre identificados.</p>
-        <h2>Seus direitos</h2>
-        <p>Como não há conta nem servidor, você tem controle total: os dados estão no seu dispositivo. Para dúvidas, use a página de <Link to="/contato">contato</Link>.</p>
-      </Prose>
-    </Container>
+    <Static title="Política de privacidade" eyebrow="Legal" description="Como o Nexo trata (ou melhor, não trata) os seus dados." path="/privacidade">
+      <h2>Dados que ficam no seu navegador</h2>
+      <p>Favoritos, histórico de navegação interno, histórico de buscas, prompts salvos, tema e dados digitados em ferramentas com persistência (tarefas, notas, hábitos, Pomodoro) são armazenados via <code>localStorage</code>, apenas no seu dispositivo. Você pode apagá-los limpando os dados do site no navegador ou usando os botões "Limpar" na interface.</p>
+      <h2>Dados que não coletamos</h2>
+      <p>O Nexo não tem servidor próprio, banco de dados ou sistema de login. Textos, números e arquivos que você usa nas ferramentas não são enviados a lugar nenhum.</p>
+      <h2>Publicidade</h2>
+      <p>Usamos o Google AdSense para exibir anúncios. O Google pode usar cookies e identificadores para personalização, conforme a <a href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener noreferrer">política de anúncios do Google</a>. Você pode desativar a personalização em <a href="https://adssettings.google.com" target="_blank" rel="noopener noreferrer">adssettings.google.com</a>. Não incentivamos cliques e os espaços são sempre identificados como "Publicidade".</p>
+      <h2>Vídeos incorporados</h2>
+      <p>Quando presentes, vídeos do YouTube usam o domínio <code>youtube-nocookie.com</code>, que só define cookies após a reprodução.</p>
+      <h2>Fontes</h2>
+      <p>As fontes tipográficas são carregadas do Google Fonts, que pode registrar o endereço IP da requisição.</p>
+      <h2>Alterações</h2>
+      <p>Esta política pode ser atualizada. A data de revisão é março de 2026.</p>
+    </Static>
   );
 }
 
 export function TermsPage() {
-  useSEO({ title: "Termos de uso", description: "Condições de uso da plataforma Nexo, ferramentas e conteúdo.", path: "/termos" });
   return (
-    <Container wide>
-      <PageHeader eyebrow="Legal" title="Termos de uso" description="Última atualização: março de 2026." crumbs={[{ label: "Termos" }]} />
-      <Prose>
-        <h2>Uso das ferramentas</h2>
-        <p>As ferramentas são fornecidas gratuitamente, sem garantia de precisão para fins profissionais, jurídicos, médicos ou financeiros. Calculadoras financeiras e de saúde são educativas: confirme com um profissional antes de decidir.</p>
-        <h2>Conteúdo</h2>
-        <p>Textos, guias e vídeos são de autoria da equipe Nexo ou de colaboradores identificados. Você pode citar trechos com link para a fonte. Reprodução integral requer autorização.</p>
-        <h2>Prompts</h2>
-        <p>Os prompts da biblioteca podem ser usados livremente, inclusive comercialmente. Não garantimos resultados de modelos de terceiros.</p>
-        <h2>Publicidade</h2>
-        <p>Espaços de anúncio e links de afiliado são identificados. Não aceitamos anúncios disfarçados de conteúdo editorial.</p>
-        <h2>Alterações</h2>
-        <p>Estes termos podem mudar. A data de atualização aparece no topo desta página.</p>
-      </Prose>
-    </Container>
+    <Static title="Termos de uso" eyebrow="Legal" description="Regras simples para usar a plataforma." path="/termos">
+      <h2>Uso das ferramentas</h2>
+      <p>As ferramentas são fornecidas "como estão", para fins informativos e de produtividade. Resultados de calculadoras financeiras, trabalhistas e de saúde são estimativas e não substituem orientação de profissionais qualificados.</p>
+      <h2>Conteúdo editorial</h2>
+      <p>Notícias, artigos, guias e vídeos são produzidos editorialmente e refletem análises da equipe na data de publicação. Não há garantia de atualização em tempo real.</p>
+      <h2>Prompts</h2>
+      <p>Os templates de prompts podem ser usados livremente, inclusive comercialmente. Você é responsável pelo uso que faz das saídas geradas em ferramentas de terceiros.</p>
+      <h2>Propriedade intelectual</h2>
+      <p>Textos e design são do Nexo, salvo indicação contrária. É permitido citar trechos com link para a página original.</p>
+      <h2>Limitação de responsabilidade</h2>
+      <p>Não nos responsabilizamos por decisões tomadas com base nos resultados das ferramentas ou no conteúdo publicado.</p>
+    </Static>
   );
 }
 
 export function AdsPage() {
-  useSEO({ title: "Publicidade e afiliados", description: "Como a Nexo se financia: anúncios rotulados, links de afiliado identificados e produtos digitais próprios.", path: "/anuncios" });
   return (
-    <Container wide>
-      <PageHeader eyebrow="Transparência" title="Publicidade, afiliados e produtos" description="Como financiamos uma plataforma gratuita sem comprometer o conteúdo." crumbs={[{ label: "Publicidade e afiliados" }]} />
-      <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="prose-editorial max-w-3xl">
-          <h2>Três fontes de receita</h2>
-          <ol>
-            <li><strong>Anúncios display.</strong> Espaços reservados e rotulados como "Publicidade". Nunca no meio do resultado de uma ferramenta, nunca imitando botões.</li>
-            <li><strong>Links de afiliado.</strong> Recomendações de produtos que usamos ou avaliamos, sempre com a etiqueta "Link de afiliado" e atributo <code>rel="sponsored"</code>.</li>
-            <li><strong>Produtos digitais próprios.</strong> Kits de prompts, templates e guias em formato pago, claramente separados do conteúdo gratuito.</li>
-          </ol>
-          <h2>O que não fazemos</h2>
-          <ul><li>Anúncios que bloqueiam o resultado ou exigem clique para revelar</li><li>Pop-ups, contadores falsos de escassez, "dark patterns"</li><li>Conteúdo editorial pago sem identificação</li><li>Venda de dados de usuários (não os coletamos)</li></ul>
-          <h2>Para anunciantes e parceiros</h2>
-          <p>Aceitamos parcerias alinhadas ao público: ferramentas de IA, produtividade, educação e desenvolvimento. Use o <Link to="/contato">formulário de contato</Link> com o assunto "Publicidade".</p>
-          <h2>Como ativar o AdSense</h2>
-          <p>Para o desenvolvedor: o componente <code>AdSlot</code> em <code>components/ui/monetization.tsx</code> já reserva os espaços com os tamanhos padrão. Basta adicionar o script do AdSense no <code>index.html</code> e substituir o placeholder pelo <code>&lt;ins class="adsbygoogle"&gt;</code>.</p>
-        </div>
-        <aside className="space-y-6">
-          <div><div className="eyebrow mb-2">Exemplo de espaço de anúncio</div><AdSlot format="rectangle" id="ads-example" /></div>
-          <div><div className="eyebrow mb-2">Exemplo de afiliado</div><AffiliateBox title="Produto parceiro" description="Assim aparecem as recomendações com link de afiliado." /></div>
-          <div><div className="eyebrow mb-2">Exemplo de produto próprio</div><ProductBox title="Kit de prompts" description="Assim aparecem os produtos digitais da Nexo." price="R$ 49" /></div>
-        </aside>
-      </div>
-    </Container>
+    <Static title="Publicidade e afiliados" eyebrow="Transparência" description="Como o Nexo se mantém e como os anúncios são exibidos." path="/anuncios">
+      <p>O Nexo é gratuito e financiado por publicidade contextual via Google AdSense. Os espaços são identificados, não bloqueiam conteúdo e não usam padrões enganosos (como botões falsos).</p>
+      <h2>Onde os anúncios aparecem</h2>
+      <ul><li>Banner horizontal no fim das listagens.</li><li>Unidade in-article no meio de artigos e abaixo das ferramentas.</li><li>Sidebar em páginas de conteúdo (desktop) e retângulo (mobile).</li></ul>
+      <div className="not-prose my-8"><AdSlot format="rectangle" label="Exemplo de unidade" /></div>
+      <h2>Afiliados</h2>
+      <p>Quando um link for de afiliado, ele será sinalizado com a palavra "afiliado". Não recomendamos produtos que não usaríamos.</p>
+      <h2>Anuncie</h2>
+      <p>Para patrocínio de seções ou ferramentas, <Link to="/contato">entre em contato</Link>.</p>
+    </Static>
   );
 }
 
 export function SitemapPage() {
-  useSEO({ title: "Mapa do site", description: "Todas as páginas da Nexo organizadas por seção.", path: "/sitemap" });
-  const routes = allRoutes();
-  const groups = [...new Set(routes.map((r) => r.group))];
-  const [open, setOpen] = useState<string | null>(null);
+  const routes = useMemo(() => allRoutes(), []);
+  const groups = useMemo(() => { const g: Record<string, typeof routes> = {}; routes.forEach((r) => (g[r.group] ??= []).push(r)); return g; }, [routes]);
   return (
-    <Container wide>
-      <PageHeader eyebrow={`${routes.length} páginas`} title="Mapa do site" description="Todas as rotas da plataforma. Um sitemap.xml estático também está disponível em /sitemap.xml." crumbs={[{ label: "Mapa do site" }]} />
-      <div className="mt-8 grid gap-x-10 gap-y-8 md:grid-cols-2 lg:grid-cols-3">
-        {groups.map((g) => { const items = routes.filter((r) => r.group === g); const expanded = open === g || items.length <= 12; return (
-          <section key={g}>
-            <h2 className="flex items-center justify-between border-b border-strong pb-2 font-display text-lg font-bold">{g}<span className="font-mono text-xs text-subtle">{items.length}</span></h2>
-            <ul className="mt-2 space-y-1">{(expanded ? items : items.slice(0, 12)).map((r) => <li key={r.path}><Link to={r.path} className="text-sm text-muted hover:text-fg">{r.label}</Link></li>)}</ul>
-            {!expanded && <button onClick={() => setOpen(g)} className="mt-2 text-xs font-medium underline underline-offset-2">Ver todas ({items.length})</button>}
-          </section>
-        ); })}
-      </div>
-    </Container>
+    <Static title="Mapa do site" eyebrow="Navegação" description={`${routes.length} páginas geradas a partir dos dados locais.`} path="/sitemap">
+      <div className="not-prose grid gap-8 md:grid-cols-2">{Object.entries(groups).map(([g, items]) => <section key={g}><h2 className="mb-2 text-sm font-semibold uppercase tracking-[0.12em] text-fg-3">{g} <span className="font-normal">({items.length})</span></h2><ul className="max-h-72 space-y-1 overflow-auto pr-2 text-sm">{items.map((r) => <li key={r.path}><Link to={r.path} className="text-fg-2 hover:text-fg hover:underline underline-offset-4">{r.label}</Link></li>)}</ul></section>)}</div>
+    </Static>
   );
 }
 
 export function NotFoundPage() {
-  useSEO({ title: "Página não encontrada", description: "A página que você procura não existe.", path: "/404", noindex: true });
+  useSEO({ title: "Página não encontrada", description: "A página que você procura não existe.", noindex: true });
   return (
-    <Container className="py-24 text-center">
-      <div className="eyebrow">Erro 404</div>
-      <h1 className="display-xl mt-4 text-6xl sm:text-8xl">Nada aqui.</h1>
-      <p className="mx-auto mt-6 max-w-md text-muted">O endereço pode ter mudado ou nunca existiu. Use a busca ou volte para o início.</p>
-      <div className="mt-8 flex flex-wrap justify-center gap-3"><Button to="/">Início</Button><Button to="/buscar" variant="secondary">Buscar</Button><Button to="/sitemap" variant="ghost">Mapa do site</Button></div>
-    </Container>
+    <div className="container-x py-24 text-center">
+      <p className="font-mono text-sm text-fg-3">404</p>
+      <h1 className="mt-2 text-3xl font-semibold tracking-tight">Página não encontrada</h1>
+      <p className="mx-auto mt-3 max-w-md text-fg-2">O endereço pode ter mudado. Use a busca ou volte ao início.</p>
+      <div className="mt-6 flex justify-center gap-3"><Button to="/">Início</Button><Button variant="outline" to="/buscar">Buscar</Button></div>
+    </div>
   );
 }

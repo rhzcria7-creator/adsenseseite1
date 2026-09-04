@@ -1,112 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://nexo.app/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
-  <url><loc>https://nexo.app/ferramentas</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://nexo.app/prompts</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://nexo.app/prompts/builder</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://nexo.app/noticias</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
-  <url><loc>https://nexo.app/blog</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://nexo.app/tutoriais</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://nexo.app/guias</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://nexo.app/videos</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/categorias</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/tags</loc><priority>0.5</priority></url>
-  <url><loc>https://nexo.app/sobre</loc><priority>0.4</priority></url>
-  <url><loc>https://nexo.app/contato</loc><priority>0.4</priority></url>
-  <url><loc>https://nexo.app/anuncios</loc><priority>0.3</priority></url>
-  <url><loc>https://nexo.app/privacidade</loc><priority>0.3</priority></url>
-  <url><loc>https://nexo.app/termos</loc><priority>0.3</priority></url>
-  <url><loc>https://nexo.app/sitemap</loc><priority>0.3</priority></url>
-  <url><loc>https://nexo.app/ferramentas/categoria/calculadoras</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/ferramentas/categoria/datas</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/ferramentas/categoria/conversores</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/ferramentas/categoria/texto</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/ferramentas/categoria/geradores</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/ferramentas/categoria/ia</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/ferramentas/categoria/produtividade</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/ferramentas/porcentagem</loc><priority>0.8</priority></url>
-  <url><loc>https://nexo.app/ferramentas/desconto</loc><priority>0.8</priority></url>
-  <url><loc>https://nexo.app/ferramentas/juros-simples</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/ferramentas/juros-compostos</loc><priority>0.8</priority></url>
-  <url><loc>https://nexo.app/ferramentas/regra-de-tres</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/ferramentas/imc</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/ferramentas/dividir-conta</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/margem-de-lucro</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/ferramentas/parcelamento</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/ferramentas/media-ponderada</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/roi</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/calculadora-de-horas</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/valor-hora-freelancer</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/alcool-ou-gasolina</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/calculadora-de-idade</loc><priority>0.8</priority></url>
-  <url><loc>https://nexo.app/ferramentas/diferenca-entre-datas</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/ferramentas/somar-dias</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/contagem-regressiva</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/dia-da-semana</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/temperatura</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/comprimento</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/peso</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/velocidade</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/area</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/volume</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/dados-digitais</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/tempo</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/base-numerica</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/cores</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/ferramentas/timestamp-unix</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/base64</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/url-encode</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/json-formatter</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/ferramentas/moeda</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/contador-de-palavras</loc><priority>0.8</priority></url>
-  <url><loc>https://nexo.app/ferramentas/contador-de-caracteres</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/ferramentas/maiusculas-minusculas</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/limpar-texto</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/inverter-texto</loc><priority>0.5</priority></url>
-  <url><loc>https://nexo.app/ferramentas/gerador-de-slug</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/lorem-ipsum</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/extrair-emails-urls</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/ordenar-linhas</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/frequencia-de-palavras</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/resumidor-de-texto</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/ferramentas/tempo-de-leitura</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/gerador-de-senha</loc><priority>0.8</priority></url>
-  <url><loc>https://nexo.app/ferramentas/qr-code</loc><priority>0.8</priority></url>
-  <url><loc>https://nexo.app/ferramentas/uuid</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/gerador-de-ideias</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/ferramentas/nomes-de-negocio</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/paleta-de-cores</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/gerador-de-hashtags</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/gerador-de-titulos</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/gerador-de-bio</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/nome-de-usuario</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/gerador-de-prompt-de-imagem</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/ferramentas/melhorar-prompt</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/ferramentas/estimador-de-tokens</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/ferramentas/custo-de-api-ia</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/ferramentas/gerador-de-persona</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/roteiro-de-video</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/post-linkedin</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/analisador-de-legibilidade</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/detector-de-tom</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/pomodoro</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/ferramentas/lista-de-tarefas</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/notas-rapidas</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/cronometro</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/matriz-eisenhower</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/ferramentas/roleta-de-decisao</loc><priority>0.5</priority></url>
-  <url><loc>https://nexo.app/ferramentas/gerador-de-okr</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/guias/guia-completo-de-prompt-engineering</loc><priority>0.8</priority></url>
-  <url><loc>https://nexo.app/guias/guia-de-ferramentas-de-ia-para-pequenos-negocios</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/guias/guia-de-seguranca-digital-pessoal</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/guias/guia-de-financas-pessoais-com-calculadoras</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/guias/guia-de-produtividade-com-ferramentas-gratuitas</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/guias/guia-de-seo-tecnico-para-spas</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/blog/anatomia-de-um-bom-prompt</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/blog/como-escolher-um-modelo-de-ia-para-seu-produto</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/blog/design-editorial-para-produtos-digitais</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/blog/juros-compostos-explicados-de-verdade</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/tutoriais/como-montar-um-prompt-do-zero</loc><priority>0.7</priority></url>
-  <url><loc>https://nexo.app/tutoriais/calculadora-de-juros-compostos-em-react</loc><priority>0.6</priority></url>
-  <url><loc>https://nexo.app/tutoriais/deploy-de-spa-react-na-vercel</loc><priority>0.6</priority></url>
+<url><loc>https://nexo.app/</loc><priority>1.0</priority></url>
+<url><loc>https://nexo.app/ferramentas</loc><priority>0.9</priority></url>
+<url><loc>https://nexo.app/prompts</loc><priority>0.9</priority></url>
+<url><loc>https://nexo.app/prompts/builder</loc><priority>0.9</priority></url>
+<url><loc>https://nexo.app/noticias</loc><priority>0.8</priority></url>
+<url><loc>https://nexo.app/blog</loc><priority>0.8</priority></url>
+<url><loc>https://nexo.app/tutoriais</loc><priority>0.8</priority></url>
+<url><loc>https://nexo.app/guias</loc><priority>0.8</priority></url>
+<url><loc>https://nexo.app/videos</loc><priority>0.8</priority></url>
+<url><loc>https://nexo.app/categorias</loc><priority>0.6</priority></url>
+<url><loc>https://nexo.app/tags</loc><priority>0.5</priority></url>
+<url><loc>https://nexo.app/sobre</loc><priority>0.4</priority></url>
+<url><loc>https://nexo.app/contato</loc><priority>0.4</priority></url>
+<url><loc>https://nexo.app/privacidade</loc><priority>0.3</priority></url>
+<url><loc>https://nexo.app/termos</loc><priority>0.3</priority></url>
+<url><loc>https://nexo.app/anuncios</loc><priority>0.3</priority></url>
+<url><loc>https://nexo.app/sitemap</loc><priority>0.3</priority></url>
+<url><loc>https://nexo.app/ferramentas/categoria/calculadoras</loc><priority>0.7</priority></url>
+<url><loc>https://nexo.app/ferramentas/categoria/datas</loc><priority>0.7</priority></url>
+<url><loc>https://nexo.app/ferramentas/categoria/conversores</loc><priority>0.7</priority></url>
+<url><loc>https://nexo.app/ferramentas/categoria/texto</loc><priority>0.7</priority></url>
+<url><loc>https://nexo.app/ferramentas/categoria/geradores</loc><priority>0.7</priority></url>
+<url><loc>https://nexo.app/ferramentas/categoria/ia</loc><priority>0.7</priority></url>
+<url><loc>https://nexo.app/ferramentas/categoria/produtividade</loc><priority>0.7</priority></url>
+<url><loc>https://nexo.app/ferramentas/porcentagem</loc></url><url><loc>https://nexo.app/ferramentas/desconto</loc></url><url><loc>https://nexo.app/ferramentas/aumento-percentual</loc></url><url><loc>https://nexo.app/ferramentas/variacao-percentual</loc></url><url><loc>https://nexo.app/ferramentas/juros-simples</loc></url><url><loc>https://nexo.app/ferramentas/juros-compostos</loc></url><url><loc>https://nexo.app/ferramentas/regra-de-tres</loc></url><url><loc>https://nexo.app/ferramentas/imc</loc></url><url><loc>https://nexo.app/ferramentas/tmb</loc></url><url><loc>https://nexo.app/ferramentas/agua-diaria</loc></url><url><loc>https://nexo.app/ferramentas/dividir-conta</loc></url><url><loc>https://nexo.app/ferramentas/gorjeta</loc></url><url><loc>https://nexo.app/ferramentas/margem-de-lucro</loc></url><url><loc>https://nexo.app/ferramentas/markup</loc></url><url><loc>https://nexo.app/ferramentas/ponto-de-equilibrio</loc></url><url><loc>https://nexo.app/ferramentas/parcelamento</loc></url><url><loc>https://nexo.app/ferramentas/financiamento-price</loc></url><url><loc>https://nexo.app/ferramentas/media-ponderada</loc></url><url><loc>https://nexo.app/ferramentas/roi</loc></url><url><loc>https://nexo.app/ferramentas/cagr</loc></url><url><loc>https://nexo.app/ferramentas/inflacao</loc></url><url><loc>https://nexo.app/ferramentas/independencia-financeira</loc></url><url><loc>https://nexo.app/ferramentas/valor-hora-freelancer</loc></url><url><loc>https://nexo.app/ferramentas/conversor-salario-hora</loc></url><url><loc>https://nexo.app/ferramentas/hora-extra</loc></url><url><loc>https://nexo.app/ferramentas/decimo-terceiro</loc></url><url><loc>https://nexo.app/ferramentas/ferias</loc></url><url><loc>https://nexo.app/ferramentas/calculadora-de-horas</loc></url><url><loc>https://nexo.app/ferramentas/alcool-ou-gasolina</loc></url><url><loc>https://nexo.app/ferramentas/consumo-combustivel</loc></url><url><loc>https://nexo.app/ferramentas/custo-por-km</loc></url><url><loc>https://nexo.app/ferramentas/sorteador</loc></url>
+<url><loc>https://nexo.app/ferramentas/calculadora-de-idade</loc></url><url><loc>https://nexo.app/ferramentas/diferenca-entre-datas</loc></url><url><loc>https://nexo.app/ferramentas/somar-dias</loc></url><url><loc>https://nexo.app/ferramentas/dias-uteis</loc></url><url><loc>https://nexo.app/ferramentas/contagem-regressiva</loc></url><url><loc>https://nexo.app/ferramentas/dia-da-semana</loc></url><url><loc>https://nexo.app/ferramentas/calculadora-de-gestacao</loc></url><url><loc>https://nexo.app/ferramentas/fuso-horario</loc></url>
+<url><loc>https://nexo.app/ferramentas/temperatura</loc></url><url><loc>https://nexo.app/ferramentas/comprimento</loc></url><url><loc>https://nexo.app/ferramentas/peso</loc></url><url><loc>https://nexo.app/ferramentas/velocidade</loc></url><url><loc>https://nexo.app/ferramentas/area</loc></url><url><loc>https://nexo.app/ferramentas/volume</loc></url><url><loc>https://nexo.app/ferramentas/energia</loc></url><url><loc>https://nexo.app/ferramentas/pressao</loc></url><url><loc>https://nexo.app/ferramentas/dados-digitais</loc></url><url><loc>https://nexo.app/ferramentas/tempo</loc></url><url><loc>https://nexo.app/ferramentas/base-numerica</loc></url><url><loc>https://nexo.app/ferramentas/cores</loc></url><url><loc>https://nexo.app/ferramentas/timestamp-unix</loc></url><url><loc>https://nexo.app/ferramentas/base64</loc></url><url><loc>https://nexo.app/ferramentas/url-encode</loc></url><url><loc>https://nexo.app/ferramentas/json-formatter</loc></url><url><loc>https://nexo.app/ferramentas/csv-para-json</loc></url><url><loc>https://nexo.app/ferramentas/markdown-para-html</loc></url><url><loc>https://nexo.app/ferramentas/html-entities</loc></url><url><loc>https://nexo.app/ferramentas/texto-para-binario</loc></url><url><loc>https://nexo.app/ferramentas/numero-romano</loc></url><url><loc>https://nexo.app/ferramentas/numero-por-extenso</loc></url><url><loc>https://nexo.app/ferramentas/moeda</loc></url>
+<url><loc>https://nexo.app/ferramentas/contador-de-palavras</loc></url><url><loc>https://nexo.app/ferramentas/contador-de-caracteres</loc></url><url><loc>https://nexo.app/ferramentas/maiusculas-minusculas</loc></url><url><loc>https://nexo.app/ferramentas/limpar-texto</loc></url><url><loc>https://nexo.app/ferramentas/remover-duplicatas</loc></url><url><loc>https://nexo.app/ferramentas/inverter-texto</loc></url><url><loc>https://nexo.app/ferramentas/gerador-de-slug</loc></url><url><loc>https://nexo.app/ferramentas/lorem-ipsum</loc></url><url><loc>https://nexo.app/ferramentas/extrair-emails-urls</loc></url><url><loc>https://nexo.app/ferramentas/ordenar-linhas</loc></url><url><loc>https://nexo.app/ferramentas/frequencia-de-palavras</loc></url><url><loc>https://nexo.app/ferramentas/resumidor-de-texto</loc></url><url><loc>https://nexo.app/ferramentas/tempo-de-leitura</loc></url><url><loc>https://nexo.app/ferramentas/comparar-textos</loc></url><url><loc>https://nexo.app/ferramentas/localizar-substituir</loc></url>
+<url><loc>https://nexo.app/ferramentas/gerador-de-senha</loc></url><url><loc>https://nexo.app/ferramentas/qr-code</loc></url><url><loc>https://nexo.app/ferramentas/uuid</loc></url><url><loc>https://nexo.app/ferramentas/gerador-de-numeros-aleatorios</loc></url><url><loc>https://nexo.app/ferramentas/gerador-de-ideias</loc></url><url><loc>https://nexo.app/ferramentas/nomes-de-negocio</loc></url><url><loc>https://nexo.app/ferramentas/nome-de-usuario</loc></url><url><loc>https://nexo.app/ferramentas/paleta-de-cores</loc></url><url><loc>https://nexo.app/ferramentas/gradiente-css</loc></url><url><loc>https://nexo.app/ferramentas/box-shadow-css</loc></url><url><loc>https://nexo.app/ferramentas/gerador-de-hashtags</loc></url><url><loc>https://nexo.app/ferramentas/gerador-de-titulos</loc></url><url><loc>https://nexo.app/ferramentas/gerador-de-bio</loc></url><url><loc>https://nexo.app/ferramentas/gerador-de-meta-tags</loc></url><url><loc>https://nexo.app/ferramentas/gerador-de-utm</loc></url><url><loc>https://nexo.app/ferramentas/assinatura-de-email</loc></url><url><loc>https://nexo.app/ferramentas/validador-de-cpf-cnpj</loc></url>
+<url><loc>https://nexo.app/ferramentas/gerador-de-prompt-de-imagem</loc></url><url><loc>https://nexo.app/ferramentas/melhorar-prompt</loc></url><url><loc>https://nexo.app/ferramentas/gerador-de-system-prompt</loc></url><url><loc>https://nexo.app/ferramentas/estimador-de-tokens</loc></url><url><loc>https://nexo.app/ferramentas/custo-de-api-ia</loc></url><url><loc>https://nexo.app/ferramentas/comparador-de-modelos</loc></url><url><loc>https://nexo.app/ferramentas/gerador-de-persona</loc></url><url><loc>https://nexo.app/ferramentas/roteiro-de-video</loc></url><url><loc>https://nexo.app/ferramentas/post-linkedin</loc></url><url><loc>https://nexo.app/ferramentas/email-frio</loc></url><url><loc>https://nexo.app/ferramentas/analisador-de-legibilidade</loc></url><url><loc>https://nexo.app/ferramentas/detector-de-tom</loc></url>
+<url><loc>https://nexo.app/ferramentas/pomodoro</loc></url><url><loc>https://nexo.app/ferramentas/cronometro</loc></url><url><loc>https://nexo.app/ferramentas/lista-de-tarefas</loc></url><url><loc>https://nexo.app/ferramentas/notas-rapidas</loc></url><url><loc>https://nexo.app/ferramentas/matriz-eisenhower</loc></url><url><loc>https://nexo.app/ferramentas/roleta-de-decisao</loc></url><url><loc>https://nexo.app/ferramentas/gerador-de-okr</loc></url><url><loc>https://nexo.app/ferramentas/rastreador-de-habitos</loc></url><url><loc>https://nexo.app/ferramentas/calculadora-de-metas</loc></url>
+<url><loc>https://nexo.app/prompts/categoria/ia</loc></url><url><loc>https://nexo.app/prompts/categoria/marketing</loc></url><url><loc>https://nexo.app/prompts/categoria/vendas</loc></url><url><loc>https://nexo.app/prompts/categoria/programacao</loc></url><url><loc>https://nexo.app/prompts/categoria/negocios</loc></url><url><loc>https://nexo.app/prompts/categoria/imagens</loc></url><url><loc>https://nexo.app/prompts/categoria/videos</loc></url><url><loc>https://nexo.app/prompts/categoria/estudos</loc></url><url><loc>https://nexo.app/prompts/categoria/produtividade</loc></url><url><loc>https://nexo.app/prompts/categoria/conteudo</loc></url>
+<url><loc>https://nexo.app/prompts/system-prompt-assistente-de-suporte</loc></url><url><loc>https://nexo.app/prompts/meta-prompt-melhorar-prompt</loc></url><url><loc>https://nexo.app/prompts/avaliador-de-respostas</loc></url><url><loc>https://nexo.app/prompts/agente-de-pesquisa-estruturada</loc></url><url><loc>https://nexo.app/prompts/persona-de-ia-tutor-socratico</loc></url><url><loc>https://nexo.app/prompts/copy-para-pagina-de-vendas</loc></url><url><loc>https://nexo.app/prompts/calendario-de-conteudo-30-dias</loc></url><url><loc>https://nexo.app/prompts/briefing-de-seo-para-artigo</loc></url><url><loc>https://nexo.app/prompts/sequencia-de-email-boas-vindas</loc></url><url><loc>https://nexo.app/prompts/anuncio-para-redes-sociais</loc></url><url><loc>https://nexo.app/prompts/email-frio-de-prospeccao</loc></url><url><loc>https://nexo.app/prompts/tratamento-de-objecoes</loc></url><url><loc>https://nexo.app/prompts/follow-up-pos-reuniao</loc></url><url><loc>https://nexo.app/prompts/proposta-comercial-estruturada</loc></url><url><loc>https://nexo.app/prompts/revisao-de-codigo-detalhada</loc></url><url><loc>https://nexo.app/prompts/gerar-testes-unitarios</loc></url><url><loc>https://nexo.app/prompts/explicar-codigo-para-iniciante</loc></url><url><loc>https://nexo.app/prompts/depurar-erro</loc></url><url><loc>https://nexo.app/prompts/planejar-arquitetura</loc></url><url><loc>https://nexo.app/prompts/regex-explicada</loc></url><url><loc>https://nexo.app/prompts/analise-swot-objetiva</loc></url><url><loc>https://nexo.app/prompts/plano-de-90-dias</loc></url><url><loc>https://nexo.app/prompts/resumo-executivo</loc></url><url><loc>https://nexo.app/prompts/mapa-de-processo</loc></url><url><loc>https://nexo.app/prompts/prompt-retrato-editorial</loc></url><url><loc>https://nexo.app/prompts/prompt-produto-para-ecommerce</loc></url><url><loc>https://nexo.app/prompts/prompt-ilustracao-flat</loc></url><url><loc>https://nexo.app/prompts/prompt-cena-cinematografica</loc></url><url><loc>https://nexo.app/prompts/negative-prompt-padrao</loc></url><url><loc>https://nexo.app/prompts/roteiro-de-video-curto</loc></url><url><loc>https://nexo.app/prompts/10-ganchos-para-video</loc></url><url><loc>https://nexo.app/prompts/descricao-e-tags-youtube</loc></url><url><loc>https://nexo.app/prompts/storyboard-de-video-explicativo</loc></url><url><loc>https://nexo.app/prompts/plano-de-estudos-personalizado</loc></url><url><loc>https://nexo.app/prompts/gerar-questoes-de-prova</loc></url><url><loc>https://nexo.app/prompts/resumo-em-camadas</loc></url><url><loc>https://nexo.app/prompts/flashcards-a-partir-de-anotacoes</loc></url><url><loc>https://nexo.app/prompts/planejar-semana-por-prioridades</loc></url><url><loc>https://nexo.app/prompts/pauta-e-ata-de-reuniao</loc></url><url><loc>https://nexo.app/prompts/decisao-com-matriz-ponderada</loc></url><url><loc>https://nexo.app/prompts/email-dificil-com-tato</loc></url><url><loc>https://nexo.app/prompts/artigo-de-blog-completo</loc></url><url><loc>https://nexo.app/prompts/newsletter-semanal</loc></url><url><loc>https://nexo.app/prompts/reescrever-para-clareza</loc></url><url><loc>https://nexo.app/prompts/adaptar-conteudo-para-varias-plataformas</loc></url><url><loc>https://nexo.app/prompts/titulos-e-descricoes-seo</loc></url>
+<url><loc>https://nexo.app/noticias/agentes-de-ia-passam-a-executar-tarefas-de-ponta-a-ponta</loc></url><url><loc>https://nexo.app/noticias/modelos-abertos-alcancam-paridade-em-tarefas-de-codigo</loc></url><url><loc>https://nexo.app/noticias/regulacao-de-ia-no-brasil-avanca-com-regras-para-sistemas-de-alto-risco</loc></url><url><loc>https://nexo.app/noticias/chips-dedicados-a-ia-chegam-a-notebooks-de-entrada</loc></url><url><loc>https://nexo.app/noticias/google-atualiza-diretrizes-para-conteudo-gerado-por-ia</loc></url><url><loc>https://nexo.app/noticias/vazamento-de-credenciais-reforca-alerta-para-autenticacao-sem-senha</loc></url><url><loc>https://nexo.app/noticias/vagas-em-tecnologia-mudam-de-perfil-com-ia</loc></url><url><loc>https://nexo.app/noticias/tutores-de-ia-em-escolas-publicas-resultados-do-primeiro-ano</loc></url><url><loc>https://nexo.app/noticias/pagamentos-instantaneos-ganham-recorrencia-e-parcelamento</loc></url><url><loc>https://nexo.app/noticias/frameworks-front-end-convergem-para-renderizacao-hibrida</loc></url><url><loc>https://nexo.app/noticias/energia-para-data-centers-vira-gargalo-da-expansao-de-ia</loc></url><url><loc>https://nexo.app/noticias/modelos-multimodais-transformam-atendimento-por-video</loc></url><url><loc>https://nexo.app/noticias/design-systems-adotam-tokens-semanticos-e-temas-automaticos</loc></url><url><loc>https://nexo.app/noticias/ferramentas-no-code-integram-agentes-e-ampliam-automacao</loc></url>
+<url><loc>https://nexo.app/blog/como-escrever-prompts-que-funcionam</loc></url><url><loc>https://nexo.app/blog/typescript-strict-vale-a-pena</loc></url><url><loc>https://nexo.app/blog/seo-para-sites-de-ferramentas</loc></url><url><loc>https://nexo.app/blog/modo-escuro-bem-feito</loc></url><url><loc>https://nexo.app/blog/juros-compostos-explicados-com-exemplos</loc></url><url><loc>https://nexo.app/blog/metodo-de-produtividade-que-nao-e-app</loc></url><url><loc>https://nexo.app/blog/passkeys-o-fim-das-senhas</loc></url><url><loc>https://nexo.app/blog/precificacao-para-freelancers</loc></url><url><loc>https://nexo.app/blog/componentes-acessiveis-react</loc></url><url><loc>https://nexo.app/blog/como-avaliar-uma-ferramenta-de-ia-antes-de-adotar</loc></url><url><loc>https://nexo.app/blog/escrever-para-a-web-clareza</loc></url><url><loc>https://nexo.app/blog/estrategia-de-produto-com-poucos-recursos</loc></url>
+<url><loc>https://nexo.app/tutoriais/como-criar-um-qr-code-para-wifi</loc></url><url><loc>https://nexo.app/tutoriais/como-calcular-juros-compostos-passo-a-passo</loc></url><url><loc>https://nexo.app/tutoriais/como-montar-um-prompt-para-gerar-imagens</loc></url><url><loc>https://nexo.app/tutoriais/como-configurar-modo-escuro-com-tailwind-v4</loc></url><url><loc>https://nexo.app/tutoriais/como-criar-senhas-fortes-e-gerencia-las</loc></url><url><loc>https://nexo.app/tutoriais/como-formatar-e-validar-json</loc></url><url><loc>https://nexo.app/tutoriais/como-fazer-uma-revisao-semanal</loc></url><url><loc>https://nexo.app/tutoriais/como-escolher-um-modelo-de-ia-para-seu-projeto</loc></url>
+<url><loc>https://nexo.app/guias/guia-completo-de-engenharia-de-prompts</loc></url><url><loc>https://nexo.app/guias/guia-de-financas-pessoais-com-calculadoras</loc></url><url><loc>https://nexo.app/guias/guia-de-seguranca-digital-para-pessoas-comuns</loc></url><url><loc>https://nexo.app/guias/guia-de-seo-tecnico-para-sites-estaticos</loc></url><url><loc>https://nexo.app/guias/guia-de-produtividade-com-ferramentas-gratuitas</loc></url><url><loc>https://nexo.app/guias/guia-para-comecar-a-programar-com-ia</loc></url>
+<url><loc>https://nexo.app/videos/como-agentes-de-ia-funcionam-por-dentro</loc></url><url><loc>https://nexo.app/videos/react-19-o-que-mudou-na-pratica</loc></url><url><loc>https://nexo.app/videos/juros-compostos-em-10-minutos</loc></url><url><loc>https://nexo.app/videos/design-de-interfaces-menos-e-mais</loc></url><url><loc>https://nexo.app/videos/seguranca-digital-o-basico-que-ninguem-faz</loc></url><url><loc>https://nexo.app/videos/como-usar-ia-para-estudar-melhor</loc></url><url><loc>https://nexo.app/videos/automatize-seu-negocio-sem-programar</loc></url><url><loc>https://nexo.app/videos/gerador-de-qr-code-e-outras-utilidades</loc></url>
+<url><loc>https://nexo.app/categorias/inteligencia-artificial</loc></url><url><loc>https://nexo.app/categorias/tecnologia</loc></url><url><loc>https://nexo.app/categorias/programacao</loc></url><url><loc>https://nexo.app/categorias/marketing</loc></url><url><loc>https://nexo.app/categorias/negocios</loc></url><url><loc>https://nexo.app/categorias/design</loc></url><url><loc>https://nexo.app/categorias/financas</loc></url><url><loc>https://nexo.app/categorias/produtividade</loc></url><url><loc>https://nexo.app/categorias/seguranca</loc></url><url><loc>https://nexo.app/categorias/hardware</loc></url><url><loc>https://nexo.app/categorias/carreira</loc></url><url><loc>https://nexo.app/categorias/educacao</loc></url><url><loc>https://nexo.app/categorias/produto</loc></url><url><loc>https://nexo.app/categorias/conteudo</loc></url><url><loc>https://nexo.app/categorias/utilidades</loc></url>
 </urlset>

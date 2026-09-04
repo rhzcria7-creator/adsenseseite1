@@ -1,13 +1,14 @@
-import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, ChevronRight, Heart, History, Menu, Moon, Search, Sun, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowUp, Bookmark, ChevronRight, Command, History, Menu, Moon, Search, Sun, X } from "lucide-react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { Kbd } from "@/components/ui/primitives";
+import { Kbd } from "../ui/primitives";
 import { SearchCommand } from "./SearchCommand";
+import { Toaster } from "../ui/feedback";
 
-export const NAV = [
+const NAV = [
   { to: "/ferramentas", label: "Ferramentas" },
   { to: "/prompts", label: "Prompts" },
   { to: "/noticias", label: "Notícias" },
@@ -19,257 +20,156 @@ export const NAV = [
 
 export function Logo({ className }: { className?: string }) {
   return (
-    <Link to="/" className={cn("group inline-flex items-center gap-2.5", className)} aria-label="Nexo — início">
-      <span className="relative flex h-7 w-7 items-center justify-center bg-fg text-bg">
-        <span className="font-display text-sm font-bold leading-none">N</span>
-        <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 bg-accent transition-transform duration-300 group-hover:translate-x-0.5 group-hover:translate-y-0.5" />
+    <Link to="/" className={cn("inline-flex items-center gap-2.5 font-semibold tracking-tight", className)} aria-label="Nexo — início">
+      <span className="grid h-8 w-8 place-items-center rounded-lg bg-fg text-bg">
+        <svg viewBox="0 0 32 32" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M9 23V9l14 14V9" /></svg>
       </span>
-      <span className="font-display text-lg font-bold tracking-tight">Nexo</span>
+      <span className="text-[17px]">Nexo</span>
     </Link>
   );
 }
 
-/* --------------------------------- Header --------------------------------- */
-
-export function Header() {
+export function Shell({ children }: { children: ReactNode }) {
   const { theme, toggleTheme, favorites } = useStore();
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const location = useLocation();
+  const loc = useLocation();
 
-  useEffect(() => setOpen(false), [location.pathname]);
+  useEffect(() => { setOpen(false); window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior }); }, [loc.pathname]);
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll(); window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setSearchOpen((v) => !v);
-      }
-      if (e.key === "/" && !["INPUT", "TEXTAREA", "SELECT"].includes((e.target as HTMLElement)?.tagName)) {
-        e.preventDefault();
-        setSearchOpen(true);
-      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setSearchOpen((s) => !s); }
+      if (e.key === "/" && !["INPUT", "TEXTAREA", "SELECT"].includes((e.target as HTMLElement).tagName) && !(e.target as HTMLElement).isContentEditable) { e.preventDefault(); setSearchOpen(true); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
-  useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [open]);
+  useEffect(() => { document.body.style.overflow = open ? "hidden" : ""; return () => { document.body.style.overflow = ""; }; }, [open]);
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => {
-          const el = document.getElementById("conteudo");
-          el?.focus();
-          el?.scrollIntoView({ block: "start" });
-        }}
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[200] focus:bg-fg focus:px-3 focus:py-2 focus:text-bg"
-      >
-        Pular para o conteúdo
-      </button>
-      <header className={cn("sticky top-0 z-50 border-b bg-page/85 backdrop-blur-md transition-colors duration-300", scrolled ? "border-line" : "border-transparent")}>
-        <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between gap-4 px-4 sm:px-6 lg:h-16 lg:px-8">
+    <div className="relative flex min-h-screen flex-col">
+      <a href="#conteudo" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[200] focus:rounded-lg focus:bg-fg focus:px-4 focus:py-2 focus:text-bg">Pular para o conteúdo</a>
+      <header className={cn("sticky top-0 z-50 border-b transition-all duration-300", scrolled ? "border-line bg-bg/85 backdrop-blur-md" : "border-transparent bg-bg/0")}>
+        <div className="container-x flex h-16 items-center justify-between gap-4">
           <div className="flex items-center gap-8">
             <Logo />
-            <nav aria-label="Principal" className="hidden items-center gap-1 lg:flex">
+            <nav className="hidden items-center gap-0.5 lg:flex" aria-label="Principal">
               {NAV.map((n) => (
-                <NavLink key={n.to} to={n.to} className={({ isActive }) => cn("relative px-3 py-2 text-[13px] font-medium tracking-tight transition-colors", isActive ? "text-fg" : "text-muted hover:text-fg")}>
-                  {({ isActive }) => (
-                    <>
-                      {n.label}
-                      {isActive && <motion.span layoutId="nav-dot" className="absolute -bottom-[13px] left-3 right-3 h-0.5 bg-accent lg:-bottom-[17px]" transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }} />}
-                    </>
-                  )}
-                </NavLink>
+                <NavLink key={n.to} to={n.to} className={({ isActive }) => cn("rounded-lg px-3 py-2 text-[14px] font-medium transition-colors", isActive ? "bg-surface-2 text-fg" : "text-fg-2 hover:text-fg hover:bg-surface-2/70")}>{n.label}</NavLink>
               ))}
             </nav>
           </div>
           <div className="flex items-center gap-1.5">
-            <button onClick={() => setSearchOpen(true)} className="hidden h-9 items-center gap-2 border border-line px-3 text-xs text-muted transition-colors hover:border-strong hover:text-fg md:inline-flex" aria-label="Abrir busca">
-              <Search className="h-3.5 w-3.5" />
-              <span>Buscar</span>
-              <Kbd>⌘K</Kbd>
+            <button onClick={() => setSearchOpen(true)} className="hidden h-9 items-center gap-2 rounded-lg border bg-surface px-3 text-sm text-fg-3 transition-colors hover:border-line-2 hover:text-fg-2 md:flex" aria-label="Buscar">
+              <Search className="h-4 w-4" /><span className="pr-6">Buscar…</span><Kbd>⌘K</Kbd>
             </button>
-            <button onClick={() => setSearchOpen(true)} className="inline-flex h-9 w-9 items-center justify-center text-muted hover:text-fg md:hidden" aria-label="Abrir busca">
-              <Search className="h-4 w-4" />
-            </button>
-            <Link to="/favoritos" className="relative hidden h-9 w-9 items-center justify-center text-muted transition-colors hover:text-fg sm:inline-flex" aria-label="Favoritos">
-              <Heart className="h-4 w-4" />
-              {favorites.length > 0 && <span className="absolute right-1 top-1 flex h-3.5 min-w-3.5 items-center justify-center bg-accent px-0.5 font-mono text-[9px] text-white">{favorites.length}</span>}
+            <button onClick={() => setSearchOpen(true)} className="grid h-9 w-9 place-items-center rounded-lg text-fg-2 hover:bg-surface-2 md:hidden" aria-label="Buscar"><Search className="h-[18px] w-[18px]" /></button>
+            <Link to="/favoritos" className="relative hidden h-9 w-9 place-items-center rounded-lg text-fg-2 hover:bg-surface-2 sm:grid" aria-label="Favoritos">
+              <Bookmark className="h-[18px] w-[18px]" />
+              {favorites.length > 0 && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-brand" />}
             </Link>
-            <Link to="/historico" className="hidden h-9 w-9 items-center justify-center text-muted transition-colors hover:text-fg sm:inline-flex" aria-label="Histórico">
-              <History className="h-4 w-4" />
-            </Link>
-            <button onClick={toggleTheme} className="inline-flex h-9 w-9 items-center justify-center text-muted transition-colors hover:text-fg" aria-label={theme === "dark" ? "Ativar modo claro" : "Ativar modo escuro"}>
+            <button onClick={toggleTheme} className="grid h-9 w-9 place-items-center rounded-lg text-fg-2 hover:bg-surface-2" aria-label={theme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}>
               <AnimatePresence mode="wait" initial={false}>
-                <motion.span key={theme} initial={{ rotate: -40, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 40, opacity: 0 }} transition={{ duration: 0.2 }} className="inline-flex">
-                  {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                <motion.span key={theme} initial={{ rotate: -40, opacity: 0, scale: 0.7 }} animate={{ rotate: 0, opacity: 1, scale: 1 }} exit={{ rotate: 40, opacity: 0, scale: 0.7 }} transition={{ duration: 0.2 }}>
+                  {theme === "dark" ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
                 </motion.span>
               </AnimatePresence>
             </button>
-            <button onClick={() => setOpen((v) => !v)} className="inline-flex h-9 w-9 items-center justify-center text-fg lg:hidden" aria-label={open ? "Fechar menu" : "Abrir menu"} aria-expanded={open}>
-              {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </button>
+            <button onClick={() => setOpen(true)} className="grid h-9 w-9 place-items-center rounded-lg text-fg-2 hover:bg-surface-2 lg:hidden" aria-label="Abrir menu"><Menu className="h-5 w-5" /></button>
           </div>
         </div>
-
-        <AnimatePresence>
-          {open && (
-            <motion.div
-              key="mobile"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-x-0 bottom-0 top-14 z-40 overflow-y-auto bg-page lg:hidden"
-            >
-              <nav aria-label="Menu móvel" className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
-                <motion.ul initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.04 } } }} className="divide-y divide-[var(--line)] border-y border-line">
-                  {[{ to: "/", label: "Início" }, ...NAV, { to: "/prompts/builder", label: "Prompt Builder" }, { to: "/categorias", label: "Categorias" }, { to: "/favoritos", label: "Favoritos" }, { to: "/historico", label: "Histórico" }].map((n) => (
-                    <motion.li key={n.to} variants={{ hidden: { opacity: 0, x: -8 }, show: { opacity: 1, x: 0 } }}>
-                      <Link to={n.to} className="flex items-center justify-between py-4 font-display text-2xl font-semibold tracking-tight">
-                        {n.label}
-                        <ChevronRight className="h-5 w-5 text-subtle" />
-                      </Link>
-                    </motion.li>
-                  ))}
-                </motion.ul>
-                <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted">
-                  <Link to="/sobre">Sobre</Link>
-                  <Link to="/contato">Contato</Link>
-                  <Link to="/privacidade">Privacidade</Link>
-                  <Link to="/sitemap">Mapa do site</Link>
-                </div>
-              </nav>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </header>
+
+      <AnimatePresence>
+        {open && (
+          <>
+            <motion.div className="fixed inset-0 z-[60] bg-black/40 lg:hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setOpen(false)} />
+            <motion.aside className="fixed inset-y-0 right-0 z-[70] flex w-[86%] max-w-sm flex-col bg-bg shadow-pop lg:hidden" initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", stiffness: 380, damping: 38 }} role="dialog" aria-label="Menu">
+              <div className="flex h-16 items-center justify-between border-b px-5"><Logo /><button onClick={() => setOpen(false)} className="grid h-9 w-9 place-items-center rounded-lg hover:bg-surface-2" aria-label="Fechar menu"><X className="h-5 w-5" /></button></div>
+              <nav className="flex-1 overflow-y-auto p-3">
+                {NAV.map((n, i) => (
+                  <motion.div key={n.to} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.04 * i }}>
+                    <NavLink to={n.to} className={({ isActive }) => cn("flex items-center justify-between rounded-xl px-4 py-3 text-[15px] font-medium", isActive ? "bg-surface-2" : "hover:bg-surface-2/70")}>{n.label}<ChevronRight className="h-4 w-4 text-fg-3" /></NavLink>
+                  </motion.div>
+                ))}
+                <div className="my-3 border-t" />
+                {[{ to: "/favoritos", label: "Favoritos", icon: Bookmark }, { to: "/historico", label: "Histórico", icon: History }, { to: "/categorias", label: "Categorias", icon: Command }].map((l) => (
+                  <NavLink key={l.to} to={l.to} className="flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] text-fg-2 hover:bg-surface-2/70"><l.icon className="h-4 w-4" />{l.label}</NavLink>
+                ))}
+              </nav>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
+      <main id="conteudo" className="flex-1">{children}</main>
+      <Footer />
       <SearchCommand open={searchOpen} onClose={() => setSearchOpen(false)} />
-    </>
+      <Toaster />
+      <BackToTop />
+    </div>
   );
 }
 
-/* --------------------------------- Footer --------------------------------- */
+function BackToTop() {
+  const [show, setShow] = useState(false);
+  useEffect(() => { const f = () => setShow(window.scrollY > 900); window.addEventListener("scroll", f, { passive: true }); return () => window.removeEventListener("scroll", f); }, []);
+  return (
+    <AnimatePresence>
+      {show && <motion.button initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="fixed bottom-5 left-5 z-40 grid h-10 w-10 place-items-center rounded-full border bg-surface shadow-pop hover:bg-surface-2" aria-label="Voltar ao topo"><ArrowUp className="h-4 w-4" /></motion.button>}
+    </AnimatePresence>
+  );
+}
 
-export function Footer() {
+function Footer() {
   const cols = [
-    { title: "Explorar", links: [["Ferramentas", "/ferramentas"], ["Central de prompts", "/prompts"], ["Prompt Builder", "/prompts/builder"], ["Categorias", "/categorias"], ["Tags", "/tags"]] },
-    { title: "Conteúdo", links: [["Notícias", "/noticias"], ["Blog", "/blog"], ["Tutoriais", "/tutoriais"], ["Guias", "/guias"], ["Vídeos", "/videos"]] },
-    { title: "Você", links: [["Favoritos", "/favoritos"], ["Histórico", "/historico"], ["Buscar", "/buscar"]] },
-    { title: "Nexo", links: [["Sobre", "/sobre"], ["Contato", "/contato"], ["Publicidade e afiliados", "/anuncios"], ["Privacidade", "/privacidade"], ["Termos", "/termos"], ["Mapa do site", "/sitemap"]] },
+    { title: "Explorar", links: [["/ferramentas", "Ferramentas"], ["/prompts", "Central de prompts"], ["/prompts/builder", "Prompt Builder"], ["/categorias", "Categorias"], ["/tags", "Tags"]] },
+    { title: "Conteúdo", links: [["/noticias", "Notícias"], ["/blog", "Blog"], ["/tutoriais", "Tutoriais"], ["/guias", "Guias"], ["/videos", "Vídeos"]] },
+    { title: "Você", links: [["/favoritos", "Favoritos"], ["/historico", "Histórico"], ["/buscar", "Busca"]] },
+    { title: "Nexo", links: [["/sobre", "Sobre"], ["/contato", "Contato"], ["/anuncios", "Publicidade"], ["/privacidade", "Privacidade"], ["/termos", "Termos"], ["/sitemap", "Mapa do site"]] },
   ];
   return (
-    <footer className="mt-24 border-t border-line">
-      <div className="mx-auto max-w-[1400px] px-4 py-14 sm:px-6 lg:px-8">
-        <div className="grid gap-10 lg:grid-cols-[1.4fr_repeat(4,1fr)]">
+    <footer className="mt-24 border-t bg-surface/40">
+      <div className="container-x py-14">
+        <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(4,1fr)]">
           <div>
             <Logo />
-            <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted">Ferramentas, prompts e conteúdo sobre IA e tecnologia. Tudo roda no seu navegador — sem cadastro, sem rastreamento invasivo.</p>
-            <Link to="/ferramentas" className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium link-underline">
-              Ver todas as ferramentas <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
+            <p className="mt-4 max-w-xs text-sm leading-6 text-fg-3">Ferramentas, prompts e conteúdo sobre IA e tecnologia. Tudo roda no seu navegador — sem cadastro, sem envio de dados.</p>
           </div>
           {cols.map((c) => (
             <div key={c.title}>
-              <div className="eyebrow">{c.title}</div>
-              <ul className="mt-4 space-y-2.5">
-                {c.links.map(([label, to]) => (
-                  <li key={to}>
-                    <Link to={to} className="text-sm text-muted transition-colors hover:text-fg">
-                      {label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+              <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-fg-3">{c.title}</p>
+              <ul className="mt-4 space-y-2.5">{c.links.map(([to, label]) => <li key={to}><Link to={to} className="text-sm text-fg-2 hover:text-fg">{label}</Link></li>)}</ul>
             </div>
           ))}
         </div>
-        <div className="mt-14 flex flex-col gap-3 border-t border-line pt-6 text-xs text-subtle sm:flex-row sm:items-center sm:justify-between">
-          <span>© {new Date().getFullYear()} Nexo. Conteúdo editorial próprio. Ferramentas 100% client-side.</span>
-          <span className="font-mono">v2.0 · React · TypeScript · Vite</span>
+        <div className="mt-12 flex flex-col gap-3 border-t pt-6 text-xs text-fg-3 sm:flex-row sm:items-center sm:justify-between">
+          <p>© {new Date().getFullYear()} Nexo. Conteúdo editorial local; não substitui aconselhamento profissional.</p>
+          <p>Feito com React, Vite, Tailwind e Framer Motion.</p>
         </div>
       </div>
     </footer>
   );
 }
 
-/* ------------------------------- Page blocks ------------------------------ */
-
-export function Container({ children, className, wide }: { children: ReactNode; className?: string; wide?: boolean }) {
-  return <div className={cn("mx-auto w-full px-4 sm:px-6 lg:px-8", wide ? "max-w-[1400px]" : "max-w-[1200px]", className)}>{children}</div>;
-}
-
-export interface Crumb {
-  label: string;
-  to?: string;
-}
-
-export function Breadcrumbs({ items }: { items: Crumb[] }) {
-  const all: Crumb[] = [{ label: "Início", to: "/" }, ...items];
+export function Breadcrumbs({ items }: { items: { label: string; path?: string }[] }) {
   return (
-    <nav aria-label="Breadcrumb" className="overflow-x-auto no-scrollbar">
-      <ol className="flex items-center gap-1.5 whitespace-nowrap font-mono text-[11px] uppercase tracking-wider text-subtle" itemScope itemType="https://schema.org/BreadcrumbList">
-        {all.map((c, i) => (
-          <li key={i} className="flex items-center gap-1.5" itemProp="itemListElement" itemScope itemType="https://schema.org/ListItem">
-            {c.to && i < all.length - 1 ? (
-              <Link to={c.to} className="transition-colors hover:text-fg" itemProp="item">
-                <span itemProp="name">{c.label}</span>
-              </Link>
-            ) : (
-              <span className="text-muted" itemProp="name" aria-current="page">
-                {c.label}
-              </span>
-            )}
-            <meta itemProp="position" content={String(i + 1)} />
-            {i < all.length - 1 && <span aria-hidden>/</span>}
+    <nav aria-label="Trilha de navegação" className="pt-6">
+      <ol className="flex flex-wrap items-center gap-1.5 text-[13px] text-fg-3">
+        <li><Link to="/" className="hover:text-fg">Início</Link></li>
+        {items.map((it, i) => (
+          <li key={i} className="flex items-center gap-1.5 min-w-0">
+            <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+            {it.path && i < items.length - 1 ? <Link to={it.path} className="hover:text-fg truncate">{it.label}</Link> : <span className="truncate text-fg-2" aria-current="page">{it.label}</span>}
           </li>
         ))}
       </ol>
     </nav>
-  );
-}
-
-export function PageHeader({ eyebrow, title, description, crumbs, aside, className }: { eyebrow?: string; title: string; description?: string; crumbs?: Crumb[]; aside?: ReactNode; className?: string }) {
-  return (
-    <div className={cn("border-b border-line pb-8 pt-6 sm:pt-8", className)}>
-      {crumbs && <Breadcrumbs items={crumbs} />}
-      <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-        <div className="max-w-3xl">
-          {eyebrow && <div className="eyebrow">{eyebrow}</div>}
-          <h1 className="mt-2 font-display text-3xl font-bold leading-[1.05] tracking-tight sm:text-4xl lg:text-5xl">{title}</h1>
-          {description && <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted sm:text-lg">{description}</p>}
-        </div>
-        {aside && <div className="shrink-0">{aside}</div>}
-      </div>
-    </div>
-  );
-}
-
-export function SectionHeader({ title, eyebrow, to, toLabel = "Ver tudo", className }: { title: string; eyebrow?: string; to?: string; toLabel?: string; className?: string }) {
-  return (
-    <div className={cn("mb-6 flex items-end justify-between gap-4 border-b border-strong pb-3", className)}>
-      <div>
-        {eyebrow && <div className="eyebrow">{eyebrow}</div>}
-        <h2 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-3xl">{title}</h2>
-      </div>
-      {to && (
-        <Link to={to} className="hidden shrink-0 items-center gap-1.5 text-sm font-medium link-underline sm:inline-flex">
-          {toLabel} <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
-      )}
-    </div>
   );
 }

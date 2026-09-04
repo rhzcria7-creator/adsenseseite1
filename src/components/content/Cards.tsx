@@ -1,155 +1,117 @@
-import { ArrowUpRight, Clock, Play } from "lucide-react";
+import { ArrowLeftRight, ArrowUpRight, Bot, CalendarDays, Calculator, Circle, Clock, PlayCircle, Sparkles, Timer, Type } from "lucide-react";
 import { Link } from "react-router-dom";
+import { TOOL_CATEGORIES } from "@/data/tools";
 import { categoryName, contentPath } from "@/lib/content";
-import { promptCategory } from "@/data/prompts";
-import { toolCategory } from "@/data/tools";
-import type { ContentItem, PromptItem, ToolMeta, VideoItem } from "@/lib/types";
-import { cn, formatDate, KIND_LABEL } from "@/lib/utils";
-import { Badge } from "@/components/ui/primitives";
+import type { ContentItem, PromptItem, SearchDoc, ToolMeta } from "@/lib/types";
+import { cn, formatDate, KIND_LABEL, KIND_PATH } from "@/lib/utils";
+import { Badge } from "../ui/primitives";
+import { Spotlight } from "../ui/motion";
 
-/* ---------------------------- Tool (grid item) ---------------------------- */
+const ICONS: Record<string, React.ComponentType<{ className?: string }>> = { calculator: Calculator, calendar: CalendarDays, "arrow-left-right": ArrowLeftRight, type: Type, sparkles: Sparkles, bot: Bot, timer: Timer };
+export function CategoryIcon({ icon, className }: { icon: string; className?: string }) {
+  const Cmp = ICONS[icon] ?? Circle;
+  return <Cmp className={className} />;
+}
 
-export function ToolCard({ tool, index, className }: { tool: ToolMeta; index?: number; className?: string }) {
+/** Cor de capa determinística a partir do slug — evita imagens pesadas. */
+export function coverStyle(seed: string, kind?: string) {
+  let h = 0; for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  const hue = kind === "news" ? 215 + (h % 30) : kind === "video" ? 340 + (h % 30) : kind === "tutorial" ? 150 + (h % 40) : kind === "guide" ? 30 + (h % 30) : 250 + (h % 40);
+  return { background: `linear-gradient(135deg, hsl(${hue} 32% 92%) 0%, hsl(${hue + 20} 28% 84%) 100%)` } as React.CSSProperties;
+}
+function CoverPattern({ seed, kind, className }: { seed: string; kind?: string; className?: string }) {
+  let h = 0; for (let i = 0; i < seed.length; i++) h = (h * 33 + seed.charCodeAt(i)) >>> 0;
+  const variant = h % 4;
   return (
-    <Link to={`/ferramentas/${tool.slug}`} className={cn("group relative flex flex-col justify-between border-b border-r border-line bg-page p-5 transition-colors hover:bg-elev", className)}>
-      <div className="flex items-start justify-between gap-3">
-        <span className="font-mono text-[11px] text-subtle">{typeof index === "number" ? String(index + 1).padStart(2, "0") : toolCategory(tool.category).name}</span>
-        <div className="flex gap-1">
-          {tool.isNew && <Badge tone="accent">Novo</Badge>}
-          <ArrowUpRight className="h-4 w-4 text-subtle transition-all duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-accent" />
+    <div className={cn("relative overflow-hidden dark:opacity-80", className)} style={coverStyle(seed, kind)} aria-hidden>
+      <svg className="absolute inset-0 h-full w-full text-black/[0.07] dark:text-black/20" viewBox="0 0 400 200" preserveAspectRatio="none">
+        {variant === 0 && Array.from({ length: 7 }).map((_, i) => <circle key={i} cx={60 + i * 50} cy={100 + Math.sin(i) * 40} r={40 + (i % 3) * 14} fill="none" stroke="currentColor" strokeWidth="1.2" />)}
+        {variant === 1 && Array.from({ length: 12 }).map((_, i) => <line key={i} x1={i * 40} y1="0" x2={i * 40 + 120} y2="200" stroke="currentColor" strokeWidth="1.2" />)}
+        {variant === 2 && Array.from({ length: 24 }).map((_, i) => <rect key={i} x={(i % 8) * 50 + 10} y={Math.floor(i / 8) * 65 + 10} width="30" height="30" rx="6" fill="none" stroke="currentColor" strokeWidth="1.2" />)}
+        {variant === 3 && <path d="M0 150 C 80 60, 160 200, 240 100 S 400 40, 400 120" fill="none" stroke="currentColor" strokeWidth="1.5" />}
+      </svg>
+    </div>
+  );
+}
+
+export function ContentCard({ item, size = "md", className }: { item: ContentItem; size?: "sm" | "md" | "lg"; className?: string }) {
+  const path = contentPath(item);
+  const isVideo = item.kind === "video";
+  return (
+    <Link to={path} className={cn("group block", className)}>
+      <article className={cn("h-full overflow-hidden rounded-2xl border bg-surface shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-line-2 hover:shadow-pop", size === "lg" && "md:grid md:grid-cols-2")}>
+        <div className="relative">
+          <CoverPattern seed={item.slug} kind={item.kind} className={cn(size === "sm" ? "h-28" : size === "lg" ? "h-52 md:h-full" : "h-40")} />
+          {isVideo && <div className="absolute inset-0 grid place-items-center"><PlayCircle className="h-12 w-12 text-fg/70 transition-transform group-hover:scale-110" /><span className="absolute bottom-3 right-3 rounded-md bg-black/70 px-1.5 py-0.5 font-mono text-[11px] text-white">{(item as { duration: string }).duration}</span></div>}
         </div>
-      </div>
-      <div className="mt-8">
-        <h3 className="font-display text-lg font-semibold leading-tight tracking-tight">{tool.name}</h3>
-        <p className="mt-1.5 line-clamp-2 text-sm text-muted">{tool.short}</p>
-      </div>
-      <span className="absolute bottom-0 left-0 h-0.5 w-0 bg-accent transition-all duration-300 group-hover:w-full" />
+        <div className={cn("flex flex-col p-5", size === "lg" && "md:p-8")}>
+          <div className="mb-2.5 flex flex-wrap items-center gap-2 text-[12px] text-fg-3">
+            <Badge tone="brand">{KIND_LABEL[item.kind]}</Badge>
+            <span>{categoryName(item.category)}</span><span aria-hidden>·</span><time dateTime={item.publishedAt}>{formatDate(item.publishedAt)}</time>
+          </div>
+          <h3 className={cn("font-semibold tracking-tight leading-snug group-hover:underline decoration-line-2 underline-offset-4", size === "lg" ? "text-2xl" : size === "sm" ? "text-[15px]" : "text-lg")}>{item.title}</h3>
+          {size !== "sm" && <p className={cn("mt-2 text-fg-2 leading-6", size === "lg" ? "text-[15px] line-clamp-4" : "text-sm line-clamp-3")}>{item.excerpt}</p>}
+          <div className="mt-auto flex items-center gap-3 pt-4 text-xs text-fg-3">
+            <span>{item.author}</span><span className="flex items-center gap-1"><Clock className="h-3 w-3" />{item.readingTime} min</span>
+          </div>
+        </div>
+      </article>
     </Link>
   );
 }
 
-export function ToolRow({ tool }: { tool: ToolMeta }) {
+export function ContentRow({ item }: { item: ContentItem }) {
   return (
-    <Link to={`/ferramentas/${tool.slug}`} className="group flex items-center justify-between gap-4 py-3 transition-colors hover:text-accent">
+    <Link to={contentPath(item)} className="group flex items-start gap-4 rounded-xl p-3 transition-colors hover:bg-surface-2/70">
+      <CoverPattern seed={item.slug} kind={item.kind} className="h-16 w-24 shrink-0 rounded-lg" />
       <div className="min-w-0">
-        <div className="truncate text-sm font-medium">{tool.name}</div>
-        <div className="truncate text-xs text-muted">{tool.short}</div>
+        <p className="text-[11px] uppercase tracking-wide text-fg-3">{KIND_LABEL[item.kind]} · {formatDate(item.publishedAt)}</p>
+        <h4 className="mt-0.5 line-clamp-2 text-[15px] font-medium leading-snug group-hover:underline underline-offset-4">{item.title}</h4>
       </div>
-      <ArrowUpRight className="h-4 w-4 shrink-0 text-subtle group-hover:text-accent" />
     </Link>
   );
 }
 
-/* ---------------------------- Editorial rows ------------------------------ */
-
-export function ContentRow({ item, showKind }: { item: ContentItem; showKind?: boolean }) {
+export function ToolCard({ tool, compact = false }: { tool: ToolMeta; compact?: boolean }) {
+  const cat = TOOL_CATEGORIES.find((c) => c.slug === tool.category)!;
   return (
-    <Link to={contentPath(item)} className="group grid gap-2 py-5 sm:grid-cols-[140px_1fr_auto] sm:gap-6">
-      <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-subtle sm:block">
-        <span>{formatDate(item.publishedAt)}</span>
-        {showKind && <span className="sm:mt-1 sm:block text-accent">{KIND_LABEL[item.kind]}</span>}
-      </div>
-      <div className="min-w-0">
-        <h3 className="font-display text-lg font-semibold leading-snug tracking-tight transition-colors group-hover:text-accent sm:text-xl">{item.title}</h3>
-        <p className="mt-1.5 line-clamp-2 text-sm text-muted">{item.excerpt}</p>
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-subtle">
-          <span>{categoryName(item.category)}</span>
-          <span aria-hidden>·</span>
-          <span className="inline-flex items-center gap-1">
-            <Clock className="h-3 w-3" /> {item.kind === "video" ? (item as VideoItem).duration : `${item.readingTime} min`}
-          </span>
+    <Link to={`/ferramentas/${tool.slug}`} className="group block h-full">
+      <Spotlight className={cn("h-full rounded-2xl border bg-surface shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-line-2 hover:shadow-pop", compact ? "p-4" : "p-5")}>
+        <div className="flex items-start justify-between gap-3">
+          <span className="grid h-10 w-10 place-items-center rounded-xl border bg-surface-2 text-fg-2 transition-colors group-hover:bg-brand-soft group-hover:text-brand group-hover:border-brand/10"><CategoryIcon icon={cat.icon} className="h-5 w-5" /></span>
+          <div className="flex gap-1.5">{tool.isNew && <Badge tone="ok">Novo</Badge>}{tool.featured && !compact && <Badge>Popular</Badge>}</div>
         </div>
-      </div>
-      <ArrowUpRight className="hidden h-5 w-5 self-start text-subtle transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-accent sm:block" />
+        <h3 className={cn("mt-4 font-semibold tracking-tight leading-snug", compact ? "text-[15px]" : "text-base")}>{tool.name}</h3>
+        <p className={cn("mt-1.5 text-fg-2 leading-5", compact ? "text-[13px] line-clamp-2" : "text-sm line-clamp-2")}>{tool.short}</p>
+        {!compact && <p className="mt-4 flex items-center gap-1 text-[12px] text-fg-3">{cat.name}<ArrowUpRight className="ml-auto h-4 w-4 opacity-0 transition-all group-hover:opacity-100 group-hover:translate-x-0.5" /></p>}
+      </Spotlight>
     </Link>
   );
 }
-
-/* ------------------------------ Featured ---------------------------------- */
-
-export function FeatureCard({ item, big }: { item: ContentItem; big?: boolean }) {
-  return (
-    <Link to={contentPath(item)} className={cn("group flex h-full flex-col justify-between border border-line p-6 transition-colors hover:border-strong", big && "sm:p-8")}>
-      <div className="flex items-center justify-between">
-        <Badge tone="outline">{KIND_LABEL[item.kind]}</Badge>
-        <span className="font-mono text-[11px] text-subtle">{formatDate(item.publishedAt)}</span>
-      </div>
-      <div className={cn("mt-10", big && "mt-16")}>
-        <div className="eyebrow">{categoryName(item.category)}</div>
-        <h3 className={cn("mt-2 font-display font-bold leading-[1.1] tracking-tight transition-colors group-hover:text-accent", big ? "text-3xl sm:text-4xl lg:text-5xl" : "text-xl sm:text-2xl")}>{item.title}</h3>
-        <p className={cn("mt-3 text-muted", big ? "max-w-xl text-base" : "line-clamp-3 text-sm")}>{item.excerpt}</p>
-      </div>
-      <div className="mt-6 flex items-center justify-between text-xs text-subtle">
-        <span>{item.author}</span>
-        <span className="inline-flex items-center gap-1 font-medium text-fg">
-          Ler <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-        </span>
-      </div>
-    </Link>
-  );
-}
-
-/* -------------------------------- Video ----------------------------------- */
-
-export function VideoCard({ video }: { video: VideoItem }) {
-  return (
-    <Link to={`/videos/${video.slug}`} className="group block">
-      <div className="relative aspect-video overflow-hidden border border-line bg-fg text-bg">
-        <div className="grid-lines absolute inset-0 opacity-30" />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="flex h-12 w-12 items-center justify-center border border-current/40 transition-all duration-300 group-hover:scale-110 group-hover:border-accent group-hover:bg-accent">
-            <Play className="ml-0.5 h-4 w-4 fill-current" />
-          </span>
-        </div>
-        <span className="absolute bottom-2 right-2 bg-page px-1.5 py-0.5 font-mono text-[11px] text-fg">{video.duration}</span>
-        <span className="absolute left-3 top-3 font-mono text-[10px] uppercase tracking-wider opacity-60">{video.channel}</span>
-      </div>
-      <h3 className="mt-3 font-display text-base font-semibold leading-snug tracking-tight transition-colors group-hover:text-accent sm:text-lg">{video.title}</h3>
-      <p className="mt-1 line-clamp-2 text-sm text-muted">{video.excerpt}</p>
-    </Link>
-  );
-}
-
-/* -------------------------------- Prompt ---------------------------------- */
 
 export function PromptCard({ prompt }: { prompt: PromptItem }) {
   return (
-    <Link to={`/prompts/${prompt.slug}`} className="group flex h-full flex-col border border-line p-5 transition-colors hover:border-strong">
-      <div className="flex items-center justify-between gap-2">
-        <span className="eyebrow">{promptCategory(prompt.category).name}</span>
-        <Badge tone="outline">{prompt.difficulty}</Badge>
-      </div>
-      <h3 className="mt-3 font-display text-lg font-semibold leading-snug tracking-tight transition-colors group-hover:text-accent">{prompt.title}</h3>
-      <p className="mt-1.5 line-clamp-2 text-sm text-muted">{prompt.description}</p>
-      <pre className="mt-4 line-clamp-3 whitespace-pre-wrap border-l-2 border-line pl-3 font-mono text-[11px] leading-relaxed text-subtle">{prompt.prompt}</pre>
-      <div className="mt-auto flex flex-wrap gap-1 pt-4">
-        {prompt.platform.slice(0, 3).map((p) => (
-          <span key={p} className="border border-line px-1.5 py-0.5 font-mono text-[10px] text-muted">
-            {p}
-          </span>
-        ))}
-      </div>
+    <Link to={`/prompts/${prompt.slug}`} className="group block h-full">
+      <article className="flex h-full flex-col rounded-2xl border bg-surface p-5 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-line-2 hover:shadow-pop">
+        <div className="mb-3 flex items-center justify-between gap-2"><Badge tone="brand">{categoryName(prompt.category)}</Badge><span className="text-[11px] text-fg-3">{prompt.difficulty}</span></div>
+        <h3 className="text-base font-semibold tracking-tight leading-snug">{prompt.title}</h3>
+        <p className="mt-1.5 line-clamp-2 text-sm text-fg-2">{prompt.description}</p>
+        <pre className="mt-4 line-clamp-3 whitespace-pre-wrap rounded-lg bg-surface-2 p-3 font-mono text-[11.5px] leading-5 text-fg-3">{prompt.prompt}</pre>
+        <div className="mt-auto flex flex-wrap gap-1.5 pt-4">{prompt.platform.slice(0, 3).map((p) => <span key={p} className="rounded-md border px-1.5 py-0.5 text-[11px] text-fg-3">{p}</span>)}{prompt.variables.length > 0 && <span className="ml-auto text-[11px] text-fg-3">{prompt.variables.length} variáveis</span>}</div>
+      </article>
     </Link>
   );
 }
 
-/* ------------------------------ Mini list --------------------------------- */
-
-export function MiniList({ items, title }: { items: { title: string; path: string; meta?: string }[]; title?: string }) {
-  if (!items.length) return null;
+export function SearchResultRow({ doc }: { doc: SearchDoc }) {
   return (
-    <div>
-      {title && <div className="eyebrow mb-2 border-b border-strong pb-2">{title}</div>}
-      <ul className="divide-y divide-[var(--line)]">
-        {items.map((it) => (
-          <li key={it.path}>
-            <Link to={it.path} className="group flex items-start justify-between gap-3 py-2.5">
-              <span className="text-sm font-medium leading-snug transition-colors group-hover:text-accent">{it.title}</span>
-              {it.meta && <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-subtle">{it.meta}</span>}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <Link to={doc.path} className="group flex items-start gap-4 rounded-xl border bg-surface p-4 transition-colors hover:border-line-2 hover:bg-surface-2/50">
+      <span className="mt-0.5 w-20 shrink-0 text-[11px] font-medium uppercase tracking-wide text-fg-3">{KIND_LABEL[doc.kind]}</span>
+      <div className="min-w-0 flex-1">
+        <h4 className="text-[15px] font-medium leading-snug group-hover:underline underline-offset-4">{doc.title}</h4>
+        <p className="mt-1 line-clamp-2 text-sm text-fg-2">{doc.description}</p>
+        <p className="mt-1.5 text-xs text-fg-3">{KIND_PATH[doc.kind]}/{doc.path.split("/").pop()} · {categoryName(doc.category)}</p>
+      </div>
+    </Link>
   );
 }

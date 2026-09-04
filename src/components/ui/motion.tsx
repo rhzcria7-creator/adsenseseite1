@@ -1,215 +1,140 @@
-import { motion, useInView, useReducedMotion, useSpring, useTransform } from "framer-motion";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { motion, useInView, useReducedMotion, useSpring, useTransform } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-const EASE = [0.16, 1, 0.3, 1] as const;
+const ease = [0.22, 1, 0.36, 1] as const;
 
-/* --------------------------------- Reveal --------------------------------- */
-
-export function Reveal({ children, delay = 0, className, y = 14, once = true }: { children: ReactNode; delay?: number; className?: string; y?: number; once?: boolean }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once, margin: "0px 0px -8% 0px" });
+/** Reveal on scroll (inspirado no React Bits "AnimatedContent"). */
+export function Reveal({ children, delay = 0, y = 16, className, once = true }: { children: ReactNode; delay?: number; y?: number; className?: string; once?: boolean }) {
   const reduce = useReducedMotion();
   return (
-    <motion.div
-      ref={ref}
-      initial={reduce ? false : { opacity: 0, y }}
-      animate={inView ? { opacity: 1, y: 0 } : undefined}
-      transition={{ duration: 0.55, delay, ease: EASE }}
-      className={className}
-    >
+    <motion.div className={className} initial={reduce ? false : { opacity: 0, y }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once, margin: "-40px" }} transition={{ duration: 0.55, ease, delay }}>
       {children}
     </motion.div>
   );
 }
 
-export function Stagger({ children, className, gap = 0.05 }: { children: ReactNode; className?: string; gap?: number }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "0px 0px -8% 0px" });
+/** Lista com stagger. */
+export function Stagger({ children, className, delay = 0.05 }: { children: ReactNode; className?: string; delay?: number }) {
   return (
-    <motion.div ref={ref} initial="hidden" animate={inView ? "show" : "hidden"} variants={{ hidden: {}, show: { transition: { staggerChildren: gap } } }} className={className}>
+    <motion.div className={className} initial="hidden" whileInView="show" viewport={{ once: true, margin: "-40px" }} variants={{ hidden: {}, show: { transition: { staggerChildren: delay } } }}>
       {children}
     </motion.div>
   );
 }
-
 export function StaggerItem({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <motion.div variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: EASE } } }} className={className}>
-      {children}
-    </motion.div>
-  );
+  const reduce = useReducedMotion();
+  return <motion.div className={className} variants={{ hidden: reduce ? {} : { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.5, ease } } }}>{children}</motion.div>;
 }
 
-/* ----------------------------- PageTransition ----------------------------- */
-
+/** Transição entre páginas. */
 export function PageTransition({ children }: { children: ReactNode }) {
   const reduce = useReducedMotion();
   return (
-    <motion.div
-      initial={reduce ? false : { opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={reduce ? undefined : { opacity: 0, y: -6 }}
-      transition={{ duration: 0.3, ease: EASE }}
-    >
+    <motion.div initial={reduce ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={reduce ? undefined : { opacity: 0, y: -6 }} transition={{ duration: 0.28, ease }}>
       {children}
     </motion.div>
   );
 }
 
-/* -------------------------------- SplitText ------------------------------- */
-
-export function SplitText({ text, className, delay = 0, as: Tag = "span" }: { text: string; className?: string; delay?: number; as?: "span" | "h1" | "h2" | "p" }) {
-  const words = text.split(" ");
+/** SplitText (React Bits-like): anima palavra a palavra. */
+export function SplitText({ text, className, delay = 0 }: { text: string; className?: string; delay?: number }) {
   const reduce = useReducedMotion();
+  const words = text.split(" ");
   return (
-    <Tag className={className} aria-label={text}>
+    <span className={cn("inline", className)} aria-label={text}>
       {words.map((w, i) => (
-        <span key={i} className="inline-block overflow-hidden align-bottom">
-          <motion.span
-            className="inline-block"
-            initial={reduce ? false : { y: "110%" }}
-            animate={{ y: 0 }}
-            transition={{ duration: 0.7, delay: delay + i * 0.045, ease: EASE }}
-            aria-hidden
-          >
-            {w}
+        <span key={i} className="inline-block overflow-hidden align-bottom pb-[0.08em] -mb-[0.08em]">
+          <motion.span className="inline-block" initial={reduce ? false : { y: "110%", opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, ease, delay: delay + i * 0.045 }}>
+            {w}{i < words.length - 1 ? "\u00A0" : ""}
           </motion.span>
-          {i < words.length - 1 && <span aria-hidden>&nbsp;</span>}
         </span>
       ))}
-    </Tag>
-  );
-}
-
-/* --------------------------------- CountUp -------------------------------- */
-
-export function CountUp({ to, duration = 1.4, suffix = "", prefix = "", className, decimals = 0 }: { to: number; duration?: number; suffix?: string; prefix?: string; className?: string; decimals?: number }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true });
-  const spring = useSpring(0, { duration: duration * 1000, bounce: 0 });
-  const display = useTransform(spring, (v) => `${prefix}${v.toFixed(decimals).replace(".", ",")}${suffix}`);
-  const [text, setText] = useState(`${prefix}0${suffix}`);
-  useEffect(() => {
-    if (inView) spring.set(to);
-  }, [inView, to, spring]);
-  useEffect(() => display.on("change", (v) => setText(v)), [display]);
-  return (
-    <span ref={ref} className={cn("tabular", className)}>
-      {text}
     </span>
   );
 }
 
-/* --------------------------- AnimatedBackground --------------------------- */
-/** A subtle "flow field" of drifting points on a technical grid. Respects reduced motion and pauses when hidden. */
-
-export function AnimatedBackground({ className, density = 42, opacity = 1 }: { className?: string; density?: number; opacity?: number }) {
-  const ref = useRef<HTMLCanvasElement>(null);
-  const reduce = useReducedMotion();
-
-  useEffect(() => {
-    const canvas = ref.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    let raf = 0;
-    let w = 0;
-    let h = 0;
-    let dpr = 1;
-    let t = 0;
-    let running = true;
-    let dark = document.documentElement.classList.contains("dark");
-    const mo = new MutationObserver(() => (dark = document.documentElement.classList.contains("dark")));
-    mo.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-
-    const resize = () => {
-      const rect = canvas.getBoundingClientRect();
-      dpr = Math.min(2, window.devicePixelRatio || 1);
-      w = rect.width;
-      h = rect.height;
-      canvas.width = Math.floor(w * dpr);
-      canvas.height = Math.floor(h * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    };
-    resize();
-    const ro = new ResizeObserver(resize);
-    ro.observe(canvas);
-
-    const io = new IntersectionObserver(([e]) => {
-      running = e.isIntersecting;
-      if (running) loop();
-    });
-    io.observe(canvas);
-
-    const draw = () => {
-      ctx.clearRect(0, 0, w, h);
-      const cols = Math.ceil(w / density) + 1;
-      const rows = Math.ceil(h / density) + 1;
-      const ink = dark ? "242,242,239" : "18,18,17";
-      const accent = "228,87,46";
-      for (let i = 0; i < cols; i++) {
-        for (let j = 0; j < rows; j++) {
-          const x = i * density;
-          const y = j * density;
-          const n = Math.sin(x * 0.012 + t * 0.6) * Math.cos(y * 0.011 - t * 0.45) + Math.sin((x + y) * 0.006 + t * 0.3);
-          const a = (n + 2) / 4; // 0..1
-          const len = 4 + a * 10;
-          const ang = n * Math.PI;
-          const dx = Math.cos(ang) * len;
-          const dy = Math.sin(ang) * len;
-          ctx.strokeStyle = a > 0.86 ? `rgba(${accent},${(0.35 + a * 0.4) * opacity})` : `rgba(${ink},${(0.05 + a * 0.14) * opacity})`;
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(x - dx / 2, y - dy / 2);
-          ctx.lineTo(x + dx / 2, y + dy / 2);
-          ctx.stroke();
-        }
-      }
-    };
-
-    const loop = () => {
-      if (!running) return;
-      t += 0.008;
-      draw();
-      if (!reduce) raf = requestAnimationFrame(loop);
-    };
-    loop();
-
-    return () => {
-      cancelAnimationFrame(raf);
-      ro.disconnect();
-      io.disconnect();
-      mo.disconnect();
-    };
-  }, [density, opacity, reduce]);
-
-  return <canvas ref={ref} aria-hidden className={cn("pointer-events-none absolute inset-0 h-full w-full", className)} />;
+/** CountUp (React Bits-like). */
+export function CountUp({ to, duration = 1.4, suffix = "", prefix = "", className }: { to: number; duration?: number; suffix?: string; prefix?: string; className?: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-20px" });
+  const spring = useSpring(0, { duration: duration * 1000, bounce: 0 });
+  const rounded = useTransform(spring, (v) => Math.round(v).toLocaleString("pt-BR"));
+  const [val, setVal] = useState("0");
+  useEffect(() => { if (inView) spring.set(to); }, [inView, spring, to]);
+  useEffect(() => rounded.on("change", (v) => setVal(v)), [rounded]);
+  return <span ref={ref} className={className}>{prefix}{val}{suffix}</span>;
 }
 
-/* --------------------------------- Marquee -------------------------------- */
-
-export function Marquee({ items, className }: { items: ReactNode[]; className?: string }) {
+/** Spotlight card hover (React Bits-like): brilho sutil seguindo o mouse. */
+export function Spotlight({ children, className }: { children: ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const onMove = (e: React.MouseEvent) => {
+    const el = ref.current; if (!el) return;
+    const r = el.getBoundingClientRect();
+    el.style.setProperty("--mx", `${e.clientX - r.left}px`); el.style.setProperty("--my", `${e.clientY - r.top}px`);
+  };
   return (
-    <div className={cn("overflow-hidden border-y border-line", className)}>
-      <div className="marquee flex w-max gap-10 py-3 pr-10">
-        {[...items, ...items].map((it, i) => (
-          <div key={i} className="flex shrink-0 items-center gap-10 text-xs font-medium uppercase tracking-wider text-muted">
-            {it}
-            <span className="h-1 w-1 bg-accent" />
-          </div>
-        ))}
-      </div>
+    <div ref={ref} onMouseMove={onMove} className={cn("group relative overflow-hidden", className)}>
+      <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" style={{ background: "radial-gradient(240px circle at var(--mx, 50%) var(--my, 50%), color-mix(in oklab, var(--brand) 9%, transparent), transparent 70%)" }} />
+      {children}
     </div>
   );
 }
 
-/* -------------------------------- Hoverline ------------------------------- */
-
-export function HoverCard({ children, className }: { children: ReactNode; className?: string }) {
+/**
+ * Fundo animado sofisticado e barato: malha de pontos + duas "correntes" de luz
+ * desenhadas em canvas com baixa opacidade. Pausa quando a aba está oculta e
+ * respeita prefers-reduced-motion.
+ */
+export function AmbientBackground() {
+  const ref = useRef<HTMLCanvasElement>(null);
+  const reduce = useReducedMotion();
+  useEffect(() => {
+    const canvas = ref.current; if (!canvas) return;
+    const ctx = canvas.getContext("2d"); if (!ctx) return;
+    let raf = 0, w = 0, h = 0, t = 0, running = true;
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    const resize = () => { w = canvas.clientWidth; h = canvas.clientHeight; canvas.width = w * dpr; canvas.height = h * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); };
+    resize();
+    const isDark = () => document.documentElement.classList.contains("dark");
+    const draw = () => {
+      if (!running) return;
+      t += 0.0025;
+      ctx.clearRect(0, 0, w, h);
+      const dark = isDark();
+      // grade de pontos
+      ctx.fillStyle = dark ? "rgba(255,255,255,0.045)" : "rgba(0,0,0,0.05)";
+      const gap = 28;
+      for (let x = gap / 2; x < w; x += gap) for (let y = gap / 2; y < h; y += gap) { ctx.beginPath(); ctx.arc(x, y, 1, 0, Math.PI * 2); ctx.fill(); }
+      // correntes de luz
+      const lines = 2;
+      for (let i = 0; i < lines; i++) {
+        const grad = ctx.createLinearGradient(0, 0, w, 0);
+        const c = dark ? "126,162,255" : "29,78,216";
+        grad.addColorStop(0, `rgba(${c},0)`); grad.addColorStop(0.5, `rgba(${c},${dark ? 0.22 : 0.16})`); grad.addColorStop(1, `rgba(${c},0)`);
+        ctx.strokeStyle = grad; ctx.lineWidth = 1.2; ctx.beginPath();
+        for (let x = 0; x <= w; x += 8) {
+          const y = h * (0.25 + i * 0.35) + Math.sin(x * 0.0035 + t * 4 + i * 2) * 40 + Math.sin(x * 0.0012 - t * 2.5) * 60;
+          x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+      if (!reduce) raf = requestAnimationFrame(draw);
+    };
+    draw();
+    const onVis = () => { running = !document.hidden; if (running && !reduce) draw(); else cancelAnimationFrame(raf); };
+    const ro = new ResizeObserver(() => { resize(); if (reduce) draw(); });
+    ro.observe(canvas);
+    document.addEventListener("visibilitychange", onVis);
+    const obs = new MutationObserver(() => { if (reduce) draw(); });
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => { running = false; cancelAnimationFrame(raf); ro.disconnect(); obs.disconnect(); document.removeEventListener("visibilitychange", onVis); };
+  }, [reduce]);
   return (
-    <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.25, ease: EASE }} className={className}>
-      {children}
-    </motion.div>
+    <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[520px] overflow-hidden" aria-hidden>
+      <canvas ref={ref} className="h-full w-full" />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-bg/40 to-bg" />
+    </div>
   );
 }

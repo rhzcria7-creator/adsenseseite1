@@ -1,325 +1,198 @@
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Download, Pause, Play, Plus, RotateCcw, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocalStorage, useStore } from "@/lib/store";
-import { downloadText, uid } from "@/lib/utils";
+import { Check, Flag, Pause, Play, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { Button, Field, Input, Segmented, Select, Textarea } from "@/components/ui/primitives";
-import { Empty } from "@/components/ui/feedback";
-import { Actions, Bar, BigNumber, KV, OutputArea, ResultPanel, ToolGrid, ToolShell } from "./ToolShell";
-import type { ToolProps } from "./calculators";
+import { ResultBox, Stat } from "@/components/ui/feedback";
+import { useLocalStorage, useStore } from "@/lib/store";
+import { cn, downloadText, uid } from "@/lib/utils";
+import { fmt, rnd, TemplateTool, ToolActions } from "./ToolShell";
+import { words } from "./text";
 
-const pad = (n: number) => String(n).padStart(2, "0");
-
-function beep() {
-  try {
-    const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.connect(g);
-    g.connect(ctx.destination);
-    o.frequency.value = 880;
-    g.gain.setValueAtTime(0.2, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
-    o.start();
-    o.stop(ctx.currentTime + 0.6);
-  } catch {
-    /* audio blocked */
-  }
-}
+const beep = () => { try { const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)(); const o = ctx.createOscillator(), g = ctx.createGain(); o.connect(g); g.connect(ctx.destination); o.frequency.value = 880; g.gain.setValueAtTime(0.0001, ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.6); o.start(); o.stop(ctx.currentTime + 0.6); } catch { /* sem áudio */ } };
+const mmss = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
 /* -------------------------------- Pomodoro -------------------------------- */
-type Phase = "focus" | "short" | "long";
-interface PomoState { phase: Phase; endsAt: number | null; remaining: number; sessions: number; }
-export function Pomodoro({ meta }: ToolProps) {
-  const [cfg, setCfg] = useLocalStorage("pomodoro-cfg", { focus: 25, short: 5, long: 15 });
-  const [st, setSt] = useLocalStorage<PomoState>("pomodoro-state", { phase: "focus", endsAt: null, remaining: 25 * 60, sessions: 0 });
+export function Pomodoro() {
+  const [cfg, setCfg] = useLocalStorage("pomodoro-cfg", { focus: 25, short: 5, long: 15, sound: true });
+  const [state, setState] = useLocalStorage("pomodoro-state", { mode: "focus" as "focus" | "short" | "long", endAt: 0, remaining: 25 * 60, running: false, done: 0, day: new Date().toDateString() });
   const [, tick] = useState(0);
   const { toast } = useStore();
-  const total = cfg[st.phase] * 60;
-  const remaining = st.endsAt ? Math.max(0, Math.round((st.endsAt - Date.now()) / 1000)) : st.remaining;
-  const running = !!st.endsAt;
-  const next = useCallback(() => {
-    setSt((s) => {
-      const sessions = s.phase === "focus" ? s.sessions + 1 : s.sessions;
-      const phase: Phase = s.phase === "focus" ? (sessions % 4 === 0 ? "long" : "short") : "focus";
-      return { phase, endsAt: null, remaining: cfg[phase] * 60, sessions };
-    });
-  }, [cfg, setSt]);
-  useEffect(() => {
-    if (!running) return;
-    const id = setInterval(() => {
-      tick((t) => t + 1);
-      if (st.endsAt && Date.now() >= st.endsAt) {
-        beep();
-        toast({ title: st.phase === "focus" ? "Foco concluído. Hora da pausa." : "Pausa encerrada. De volta ao foco.", tone: "success" });
-        next();
-      }
-    }, 500);
-    return () => clearInterval(id);
-  }, [running, st.endsAt, st.phase, next, toast]);
-  useEffect(() => { document.title = running ? `${pad(Math.floor(remaining / 60))}:${pad(remaining % 60)} · Pomodoro — Nexo` : document.title; }, [remaining, running]);
-  const start = () => setSt((s) => ({ ...s, endsAt: Date.now() + (s.remaining || total) * 1000 }));
-  const pause = () => setSt((s) => ({ ...s, endsAt: null, remaining }));
-  const reset = () => setSt((s) => ({ ...s, endsAt: null, remaining: cfg[s.phase] * 60 }));
-  const setPhase = (phase: Phase) => setSt((s) => ({ ...s, phase, endsAt: null, remaining: cfg[phase] * 60 }));
-  const labels: Record<Phase, string> = { focus: "Foco", short: "Pausa curta", long: "Pausa longa" };
+  useEffect(() => { if (state.day !== new Date().toDateString()) setState({ ...state, done: 0, day: new Date().toDateString() }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const remaining = state.running ? Math.max(0, Math.round((state.endAt - Date.now()) / 1000)) : state.remaining;
+  const total = cfg[state.mode] * 60;
+  useEffect(() => { if (!state.running) return; const id = setInterval(() => { tick((x) => x + 1); if (Date.now() >= state.endAt) { if (cfg.sound) beep(); const nextDone = state.mode === "focus" ? state.done + 1 : state.done; const nextMode = state.mode === "focus" ? (nextDone % 4 === 0 ? "long" : "short") : "focus"; setState({ ...state, running: false, mode: nextMode, remaining: cfg[nextMode] * 60, done: nextDone }); toast({ title: state.mode === "focus" ? "Pomodoro concluído!" : "Pausa encerrada", description: state.mode === "focus" ? "Hora da pausa." : "De volta ao foco." }); } }, 500); return () => clearInterval(id); }, [state, cfg, setState, toast]);
+  const start = () => setState({ ...state, running: true, endAt: Date.now() + remaining * 1000 });
+  const pause = () => setState({ ...state, running: false, remaining });
+  const reset = (mode = state.mode) => setState({ ...state, running: false, mode, remaining: cfg[mode] * 60 });
+  const pctDone = 1 - remaining / total;
+  useEffect(() => { document.title = state.running ? `${mmss(remaining)} · ${state.mode === "focus" ? "Foco" : "Pausa"} — Nexo` : document.title; }, [remaining, state.running, state.mode]);
   return (
-    <ToolShell meta={meta}>
-      <Segmented value={st.phase} onChange={setPhase} options={(["focus", "short", "long"] as Phase[]).map((p) => ({ value: p, label: labels[p] }))} />
-      <div className="mt-6 flex flex-col items-center border border-strong py-10">
-        <div className="eyebrow">{labels[st.phase]} · sessão {st.sessions + 1}</div>
-        <motion.div key={remaining} className="mt-2 font-display text-7xl font-bold tabular tracking-tighter sm:text-8xl">{pad(Math.floor(remaining / 60))}:{pad(remaining % 60)}</motion.div>
-        <Bar value={total - remaining} max={total} className="mt-6 w-64" tone={st.phase === "focus" ? "accent" : "mint"} />
-        <div className="mt-6 flex gap-2">
-          {running ? <Button onClick={pause} size="lg"><Pause className="h-4 w-4" /> Pausar</Button> : <Button onClick={start} size="lg" variant="accent"><Play className="h-4 w-4" /> {remaining < total ? "Continuar" : "Iniciar"}</Button>}
-          <Button variant="secondary" size="lg" onClick={reset}><RotateCcw className="h-4 w-4" /></Button>
-          <Button variant="ghost" size="lg" onClick={next}>Pular</Button>
+    <div className="grid gap-8 lg:grid-cols-[1fr_1fr]">
+      <div className="flex flex-col items-center">
+        <Segmented value={state.mode} onChange={(m) => reset(m)} options={[{ value: "focus", label: "Foco" }, { value: "short", label: "Pausa curta" }, { value: "long", label: "Pausa longa" }]} />
+        <div className="relative mt-8 grid h-64 w-64 place-items-center">
+          <svg className="absolute inset-0 -rotate-90" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="none" stroke="var(--line)" strokeWidth="4" /><motion.circle cx="50" cy="50" r="46" fill="none" stroke="var(--brand)" strokeWidth="4" strokeLinecap="round" strokeDasharray={2 * Math.PI * 46} animate={{ strokeDashoffset: 2 * Math.PI * 46 * (1 - pctDone) }} transition={{ duration: 0.4 }} /></svg>
+          <div className="text-center"><p className="font-mono text-6xl font-semibold tabular-nums tracking-tight">{mmss(remaining)}</p><p className="mt-1 text-sm text-fg-3">{state.mode === "focus" ? "concentração" : "descanso"}</p></div>
         </div>
+        <div className="mt-6 flex gap-2">{state.running ? <Button size="lg" onClick={pause}><Pause className="h-4 w-4" />Pausar</Button> : <Button size="lg" onClick={start}><Play className="h-4 w-4" />{remaining === total ? "Iniciar" : "Continuar"}</Button>}<Button size="lg" variant="outline" onClick={() => reset()}><RotateCcw className="h-4 w-4" /></Button></div>
+        <p className="mt-5 text-sm text-fg-2">Hoje: <strong>{state.done}</strong> pomodoro(s) · {fmt(state.done * cfg.focus, 0)} min de foco</p>
+        <div className="mt-2 flex gap-1">{Array.from({ length: 8 }).map((_, i) => <span key={i} className={cn("h-2 w-6 rounded-full", i < state.done ? "bg-brand" : "bg-line")} />)}</div>
       </div>
-      <div className="mt-6 grid gap-6 md:grid-cols-2">
-        <ToolGrid cols={3}>
-          {(["focus", "short", "long"] as Phase[]).map((p) => <Field key={p} label={`${labels[p]} (min)`}><Input inputMode="numeric" value={cfg[p]} onChange={(e) => { const v = Math.max(1, Math.min(120, Number(e.target.value) || 1)); setCfg({ ...cfg, [p]: v }); if (st.phase === p && !running) setSt((s) => ({ ...s, remaining: v * 60 })); }} /></Field>)}
-        </ToolGrid>
-        <div>
-          <KV rows={[["Pomodoros concluídos", String(st.sessions)], ["Tempo focado (estimado)", `${st.sessions * cfg.focus} min`], ["Próxima pausa longa em", `${4 - (st.sessions % 4)} pomodoros`]]} />
-          <button onClick={() => setSt({ phase: "focus", endsAt: null, remaining: cfg.focus * 60, sessions: 0 })} className="mt-2 text-xs text-muted underline underline-offset-2">Zerar contagem</button>
-        </div>
+      <div className="space-y-4 rounded-2xl border bg-surface-2/50 p-5">
+        <p className="text-sm font-medium">Configurações</p>
+        <div className="grid grid-cols-3 gap-3">{(["focus", "short", "long"] as const).map((k) => <Field key={k} label={k === "focus" ? "Foco (min)" : k === "short" ? "Pausa curta" : "Pausa longa"}><Input type="number" min={1} max={120} value={cfg[k]} onChange={(e) => { const v = Math.max(1, +e.target.value || 1); setCfg({ ...cfg, [k]: v }); if (k === state.mode && !state.running) setState({ ...state, remaining: v * 60 }); }} /></Field>)}</div>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4" checked={cfg.sound} onChange={(e) => setCfg({ ...cfg, sound: e.target.checked })} />Som ao terminar</label>
+        <p className="text-xs leading-5 text-fg-3">O timer usa o relógio real: continua correto mesmo se você trocar de aba. A cada 4 pomodoros, a pausa longa é sugerida automaticamente.</p>
       </div>
-    </ToolShell>
-  );
-}
-
-/* ----------------------------- Lista de tarefas --------------------------- */
-interface Task { id: string; text: string; done: boolean; priority: "alta" | "media" | "baixa"; createdAt: number; }
-export function ListaDeTarefas({ meta }: ToolProps) {
-  const [tasks, setTasks] = useLocalStorage<Task[]>("tasks", []);
-  const [text, setText] = useState("");
-  const [prio, setPrio] = useState<Task["priority"]>("media");
-  const [filter, setFilter] = useState<"all" | "open" | "done">("all");
-  const add = (e: React.FormEvent) => { e.preventDefault(); if (!text.trim()) return; setTasks((t) => [{ id: uid(), text: text.trim(), done: false, priority: prio, createdAt: Date.now() }, ...t]); setText(""); };
-  const order = { alta: 0, media: 1, baixa: 2 };
-  const visible = tasks.filter((t) => (filter === "all" ? true : filter === "open" ? !t.done : t.done)).sort((a, b) => Number(a.done) - Number(b.done) || order[a.priority] - order[b.priority]);
-  const done = tasks.filter((t) => t.done).length;
-  return (
-    <ToolShell meta={meta}>
-      <form onSubmit={add} className="grid gap-2 sm:grid-cols-[1fr_140px_auto]">
-        <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Nova tarefa…" aria-label="Nova tarefa" />
-        <Select value={prio} onChange={(e) => setPrio(e.target.value as Task["priority"])}><option value="alta">Alta</option><option value="media">Média</option><option value="baixa">Baixa</option></Select>
-        <Button type="submit"><Plus className="h-4 w-4" /> Adicionar</Button>
-      </form>
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-        <Segmented value={filter} onChange={setFilter} options={[{ value: "all", label: `Todas (${tasks.length})` }, { value: "open", label: `Abertas (${tasks.length - done})` }, { value: "done", label: `Concluídas (${done})` }]} />
-        <div className="flex items-center gap-3"><Bar value={done} max={Math.max(1, tasks.length)} className="w-32" tone="mint" /><span className="font-mono text-xs text-muted">{tasks.length ? Math.round((done / tasks.length) * 100) : 0}%</span></div>
-      </div>
-      <ul className="mt-4 divide-y divide-[var(--line)] border-y border-line">
-        <AnimatePresence initial={false}>
-          {visible.map((t) => (
-            <motion.li key={t.id} layout initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="flex items-center gap-3 py-2.5">
-              <input type="checkbox" checked={t.done} onChange={() => setTasks((all) => all.map((x) => (x.id === t.id ? { ...x, done: !x.done } : x)))} aria-label={`Concluir ${t.text}`} className="h-4 w-4 shrink-0 accent-[var(--color-accent)]" />
-              <span className={`h-2 w-2 shrink-0 ${t.priority === "alta" ? "bg-accent" : t.priority === "media" ? "bg-amber" : "bg-[var(--line)]"}`} title={t.priority} />
-              <input value={t.text} onChange={(e) => setTasks((all) => all.map((x) => (x.id === t.id ? { ...x, text: e.target.value } : x)))} className={`min-w-0 flex-1 bg-transparent text-sm focus:outline-none ${t.done ? "text-subtle line-through" : ""}`} aria-label="Editar tarefa" />
-              <button onClick={() => setTasks((all) => all.filter((x) => x.id !== t.id))} aria-label="Excluir" className="text-subtle hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
-            </motion.li>
-          ))}
-        </AnimatePresence>
-      </ul>
-      {!visible.length && <div className="mt-4"><Empty title={tasks.length ? "Nada neste filtro" : "Nenhuma tarefa ainda"} description="Adicione até 3 prioridades para hoje." /></div>}
-      <Actions extra={<><Button size="sm" variant="ghost" onClick={() => setTasks((t) => t.filter((x) => !x.done))} disabled={!done}>Limpar concluídas</Button><Button size="sm" variant="ghost" onClick={() => downloadText("tarefas.json", JSON.stringify(tasks, null, 2), "application/json")} disabled={!tasks.length}><Download className="h-3.5 w-3.5" /> Exportar JSON</Button></>} />
-    </ToolShell>
-  );
-}
-
-/* ------------------------------ Notas rápidas ----------------------------- */
-interface Note { id: string; title: string; body: string; updatedAt: number; }
-export function NotasRapidas({ meta }: ToolProps) {
-  const [notes, setNotes] = useLocalStorage<Note[]>("notes", []);
-  const [active, setActive] = useState<string | null>(notes[0]?.id ?? null);
-  const [q, setQ] = useState("");
-  const note = notes.find((n) => n.id === active) ?? null;
-  const create = () => { const n: Note = { id: uid(), title: "Nova nota", body: "", updatedAt: Date.now() }; setNotes((all) => [n, ...all]); setActive(n.id); };
-  const update = (patch: Partial<Note>) => setNotes((all) => all.map((n) => (n.id === active ? { ...n, ...patch, updatedAt: Date.now() } : n)));
-  const remove = () => { setNotes((all) => all.filter((n) => n.id !== active)); setActive(null); };
-  const list = notes.filter((n) => (n.title + n.body).toLowerCase().includes(q.toLowerCase())).sort((a, b) => b.updatedAt - a.updatedAt);
-  const words = note?.body.trim() ? note.body.trim().split(/\s+/).length : 0;
-  return (
-    <ToolShell meta={meta}>
-      <div className="grid gap-4 md:grid-cols-[240px_1fr]">
-        <div className="flex flex-col border border-line">
-          <div className="flex gap-2 border-b border-line p-2"><Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar…" className="h-8 text-xs" aria-label="Buscar notas" /><Button size="sm" onClick={create} aria-label="Nova nota"><Plus className="h-3.5 w-3.5" /></Button></div>
-          <ul className="max-h-[420px] flex-1 overflow-y-auto">
-            {list.map((n) => <li key={n.id}><button onClick={() => setActive(n.id)} className={`block w-full border-b border-line px-3 py-2.5 text-left transition-colors ${n.id === active ? "bg-fg text-bg" : "hover:bg-elev"}`}><div className="truncate text-sm font-medium">{n.title || "Sem título"}</div><div className={`truncate text-xs ${n.id === active ? "opacity-70" : "text-muted"}`}>{n.body.slice(0, 60) || "vazia"}</div></button></li>)}
-            {!list.length && <li className="p-4 text-xs text-subtle">{notes.length ? "Nenhuma nota encontrada." : "Crie sua primeira nota."}</li>}
-          </ul>
-        </div>
-        <div className="flex min-h-[420px] flex-col border border-line">
-          {note ? (
-            <>
-              <input value={note.title} onChange={(e) => update({ title: e.target.value })} className="border-b border-line bg-transparent px-4 py-3 font-display text-lg font-semibold focus:outline-none" aria-label="Título da nota" />
-              <textarea value={note.body} onChange={(e) => update({ body: e.target.value })} className="flex-1 resize-none bg-transparent p-4 text-sm leading-relaxed focus:outline-none" placeholder="Escreva aqui. Salva automaticamente." aria-label="Conteúdo da nota" />
-              <div className="flex items-center justify-between border-t border-line px-4 py-2 text-xs text-muted"><span className="font-mono">{words} palavras · salvo {new Date(note.updatedAt).toLocaleTimeString("pt-BR")}</span><div className="flex gap-2"><button onClick={() => downloadText(`${note.title || "nota"}.txt`, note.body)} className="hover:text-fg">Baixar</button><button onClick={remove} className="hover:text-red-600">Excluir</button></div></div>
-            </>
-          ) : <div className="flex flex-1 items-center justify-center p-6"><Empty title="Selecione ou crie uma nota" action={<Button onClick={create}><Plus className="h-4 w-4" /> Nova nota</Button>} /></div>}
-        </div>
-      </div>
-    </ToolShell>
+    </div>
   );
 }
 
 /* -------------------------------- Cronômetro ------------------------------ */
-export function Cronometro({ meta }: ToolProps) {
-  const [running, setRunning] = useState(false);
-  const [elapsed, setElapsed] = useState(0);
-  const [laps, setLaps] = useState<number[]>([]);
-  const startRef = useRef(0);
-  const rafRef = useRef(0);
-  useEffect(() => {
-    if (!running) return;
-    startRef.current = performance.now() - elapsed;
-    const loop = () => { setElapsed(performance.now() - startRef.current); rafRef.current = requestAnimationFrame(loop); };
-    rafRef.current = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(rafRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [running]);
-  const fmt = (ms: number) => `${pad(Math.floor(ms / 60000))}:${pad(Math.floor((ms % 60000) / 1000))}.${pad(Math.floor((ms % 1000) / 10))}`;
-  const lapTimes = laps.map((l, i) => l - (laps[i - 1] ?? 0));
-  const best = Math.min(...lapTimes), worst = Math.max(...lapTimes);
+export function Cronometro() {
+  const [tab, setTab] = useState<"sw" | "timer">("sw");
+  const [sw, setSw] = useState({ running: false, start: 0, acc: 0, laps: [] as number[] });
+  const [, tick] = useState(0);
+  useEffect(() => { if (!sw.running) return; const id = setInterval(() => tick((x) => x + 1), 50); return () => clearInterval(id); }, [sw.running]);
+  const el = sw.acc + (sw.running ? performance.now() - sw.start : 0);
+  const f = (ms: number) => `${mmss(ms / 1000)}.${String(Math.floor((ms % 1000) / 10)).padStart(2, "0")}`;
+  const [tm, setTm] = useState({ min: "5", sec: "0", endAt: 0, running: false, left: 300 });
+  const { toast } = useStore();
+  useEffect(() => { if (!tm.running) return; const id = setInterval(() => { const left = Math.max(0, Math.round((tm.endAt - Date.now()) / 1000)); setTm((t) => ({ ...t, left })); if (left <= 0) { beep(); setTm((t) => ({ ...t, running: false })); toast({ title: "Tempo esgotado!" }); } }, 250); return () => clearInterval(id); }, [tm.running, tm.endAt, toast]);
   return (
-    <ToolShell meta={meta}>
-      <div className="flex flex-col items-center border border-strong py-10">
-        <div className="font-display text-6xl font-bold tabular tracking-tighter sm:text-8xl">{fmt(elapsed)}</div>
-        <div className="mt-6 flex gap-2">
-          <Button size="lg" variant={running ? "primary" : "accent"} onClick={() => setRunning((r) => !r)}>{running ? <><Pause className="h-4 w-4" /> Pausar</> : <><Play className="h-4 w-4" /> {elapsed ? "Continuar" : "Iniciar"}</>}</Button>
-          <Button size="lg" variant="secondary" onClick={() => setLaps((l) => [...l, elapsed])} disabled={!running}>Volta</Button>
-          <Button size="lg" variant="ghost" onClick={() => { setRunning(false); setElapsed(0); setLaps([]); }}><RotateCcw className="h-4 w-4" /></Button>
+    <div className="space-y-6">
+      <Segmented value={tab} onChange={setTab} options={[{ value: "sw", label: "Cronômetro" }, { value: "timer", label: "Timer regressivo" }]} />
+      {tab === "sw" ? (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="flex flex-col items-center rounded-2xl border bg-surface-2/50 p-8"><p className="font-mono text-6xl font-semibold tabular-nums">{f(el)}</p><div className="mt-6 flex gap-2">{sw.running ? <><Button onClick={() => setSw({ ...sw, laps: [el, ...sw.laps] })}><Flag className="h-4 w-4" />Volta</Button><Button variant="outline" onClick={() => setSw({ ...sw, running: false, acc: el })}><Pause className="h-4 w-4" />Pausar</Button></> : <><Button onClick={() => setSw({ ...sw, running: true, start: performance.now() })}><Play className="h-4 w-4" />{el ? "Continuar" : "Iniciar"}</Button><Button variant="outline" onClick={() => setSw({ running: false, start: 0, acc: 0, laps: [] })}><RotateCcw className="h-4 w-4" />Zerar</Button></>}</div></div>
+          <div className="rounded-2xl border bg-surface p-4"><p className="mb-2 text-sm font-medium">Voltas</p>{sw.laps.length ? <ol className="max-h-64 space-y-1 overflow-auto font-mono text-sm">{sw.laps.map((l, i) => <li key={i} className="flex justify-between border-b py-1.5 last:border-0"><span className="text-fg-3">#{sw.laps.length - i}</span><span>{f(l - (sw.laps[i + 1] ?? 0))}</span><span className="text-fg-3">{f(l)}</span></li>)}</ol> : <p className="text-sm text-fg-3">Nenhuma volta ainda.</p>}</div>
         </div>
-      </div>
-      {laps.length > 0 && (
-        <ResultPanel title={`${laps.length} voltas`}>
-          <ul className="divide-y divide-[var(--line)] border-y border-line">{lapTimes.map((t, i) => <li key={i} className={`flex items-center justify-between py-2 font-mono text-sm ${t === best && lapTimes.length > 1 ? "text-mint" : t === worst && lapTimes.length > 1 ? "text-red-600" : ""}`}><span>Volta {i + 1}</span><span>{fmt(t)}</span><span className="text-subtle">{fmt(laps[i])}</span></li>).reverse()}</ul>
-          <Actions copy={lapTimes.map((t, i) => `Volta ${i + 1}: ${fmt(t)}`).join("\n")} />
-        </ResultPanel>
+      ) : (
+        <div className="flex flex-col items-center rounded-2xl border bg-surface-2/50 p-8">
+          <p className="font-mono text-6xl font-semibold tabular-nums">{mmss(tm.left)}</p>
+          <div className="mt-6 flex items-end gap-2"><Field label="Min"><Input className="w-20" value={tm.min} onChange={(e) => setTm({ ...tm, min: e.target.value, left: (+e.target.value || 0) * 60 + (+tm.sec || 0) })} /></Field><Field label="Seg"><Input className="w-20" value={tm.sec} onChange={(e) => setTm({ ...tm, sec: e.target.value, left: (+tm.min || 0) * 60 + (+e.target.value || 0) })} /></Field>{tm.running ? <Button onClick={() => setTm({ ...tm, running: false })}><Pause className="h-4 w-4" />Pausar</Button> : <Button onClick={() => tm.left > 0 && setTm({ ...tm, running: true, endAt: Date.now() + tm.left * 1000 })}><Play className="h-4 w-4" />Iniciar</Button>}<Button variant="outline" onClick={() => setTm({ ...tm, running: false, left: (+tm.min || 0) * 60 + (+tm.sec || 0) })}><RotateCcw className="h-4 w-4" /></Button></div>
+          <div className="mt-4 flex gap-2">{[1, 5, 10, 25].map((m) => <Button key={m} size="sm" variant="ghost" onClick={() => setTm({ min: String(m), sec: "0", endAt: 0, running: false, left: m * 60 })}>{m} min</Button>)}</div>
+        </div>
       )}
-    </ToolShell>
+    </div>
   );
 }
 
-/* ---------------------------- Matriz de Eisenhower ------------------------ */
+/* ---------------------------------- Tarefas ------------------------------- */
+interface Task { id: string; text: string; done: boolean; pri: "alta" | "media" | "baixa"; createdAt: number }
+export function ListaDeTarefas() {
+  const [tasks, setTasks] = useLocalStorage<Task[]>("tasks", []);
+  const [text, setText] = useState(""); const [pri, setPri] = useState<Task["pri"]>("media"); const [filter, setFilter] = useState<"all" | "open" | "done">("all");
+  const add = () => { if (!text.trim()) return; setTasks([{ id: uid(), text: text.trim(), done: false, pri, createdAt: Date.now() }, ...tasks]); setText(""); };
+  const shown = tasks.filter((t) => filter === "all" || (filter === "open" ? !t.done : t.done)).sort((a, b) => Number(a.done) - Number(b.done) || ["alta", "media", "baixa"].indexOf(a.pri) - ["alta", "media", "baixa"].indexOf(b.pri));
+  const done = tasks.filter((t) => t.done).length;
+  const P = { alta: "bg-danger", media: "bg-warn", baixa: "bg-ok" };
+  return (
+    <div className="space-y-4">
+      <form onSubmit={(e) => { e.preventDefault(); add(); }} className="flex gap-2"><Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Nova tarefa…" className="flex-1" /><Select value={pri} onChange={(e) => setPri(e.target.value as Task["pri"])} className="w-28"><option value="alta">Alta</option><option value="media">Média</option><option value="baixa">Baixa</option></Select><Button type="submit"><Plus className="h-4 w-4" />Adicionar</Button></form>
+      <div className="flex flex-wrap items-center justify-between gap-3"><Segmented value={filter} onChange={setFilter} options={[{ value: "all", label: `Todas (${tasks.length})` }, { value: "open", label: `Abertas (${tasks.length - done})` }, { value: "done", label: `Feitas (${done})` }]} />{tasks.length > 0 && <div className="flex items-center gap-3 text-sm text-fg-3"><span className="h-1.5 w-32 rounded-full bg-line"><span className="block h-full rounded-full bg-brand transition-all" style={{ width: `${(done / tasks.length) * 100}%` }} /></span>{fmt((done / tasks.length) * 100, 0)}%<Button size="sm" variant="ghost" onClick={() => setTasks(tasks.filter((t) => !t.done))} disabled={!done}>Limpar feitas</Button></div>}</div>
+      <ul className="divide-y rounded-2xl border bg-surface">
+        <AnimatePresence initial={false}>
+          {shown.map((t) => (
+            <motion.li key={t.id} layout initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="flex items-center gap-3 px-4 py-3">
+              <button onClick={() => setTasks(tasks.map((x) => (x.id === t.id ? { ...x, done: !x.done } : x)))} className={cn("grid h-5 w-5 shrink-0 place-items-center rounded-md border transition-colors", t.done ? "border-brand bg-brand text-brand-fg" : "hover:border-line-2")} aria-label="Concluir">{t.done && <Check className="h-3.5 w-3.5" />}</button>
+              <span className={cn("h-2 w-2 shrink-0 rounded-full", P[t.pri])} title={`Prioridade ${t.pri}`} />
+              <span className={cn("flex-1 text-sm", t.done && "text-fg-3 line-through")}>{t.text}</span>
+              <button onClick={() => setTasks(tasks.filter((x) => x.id !== t.id))} className="text-fg-3 hover:text-danger" aria-label="Excluir"><Trash2 className="h-4 w-4" /></button>
+            </motion.li>
+          ))}
+        </AnimatePresence>
+        {!shown.length && <li className="px-4 py-10 text-center text-sm text-fg-3">{tasks.length ? "Nada aqui com esse filtro." : "Adicione a primeira tarefa. Fica salvo neste navegador."}</li>}
+      </ul>
+    </div>
+  );
+}
+
+/* ---------------------------------- Notas --------------------------------- */
+export function NotasRapidas() {
+  const [notes, setNotes] = useLocalStorage<{ id: string; title: string; body: string; updatedAt: number }[]>("notes", []);
+  const [cur, setCur] = useState<string | null>(notes[0]?.id ?? null);
+  const note = notes.find((n) => n.id === cur);
+  const upd = (patch: Partial<{ title: string; body: string }>) => setNotes(notes.map((n) => (n.id === cur ? { ...n, ...patch, updatedAt: Date.now() } : n)));
+  const add = () => { const n = { id: uid(), title: "Nova nota", body: "", updatedAt: Date.now() }; setNotes([n, ...notes]); setCur(n.id); };
+  return (
+    <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
+      <div className="rounded-2xl border bg-surface p-2"><Button size="sm" className="w-full" onClick={add}><Plus className="h-4 w-4" />Nova nota</Button><ul className="mt-2 max-h-80 space-y-0.5 overflow-auto">{notes.map((n) => <li key={n.id}><button onClick={() => setCur(n.id)} className={cn("w-full rounded-lg px-3 py-2 text-left text-sm", n.id === cur ? "bg-surface-2 font-medium" : "hover:bg-surface-2/60")}><span className="block truncate">{n.title || "Sem título"}</span><span className="block truncate text-xs text-fg-3">{new Date(n.updatedAt).toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span></button></li>)}</ul></div>
+      {note ? <div className="space-y-3"><Input value={note.title} onChange={(e) => upd({ title: e.target.value })} className="text-base font-medium" /><Textarea rows={14} value={note.body} onChange={(e) => upd({ body: e.target.value })} placeholder="Escreva… salva automaticamente." /><div className="flex flex-wrap items-center gap-3 text-xs text-fg-3"><span>{words(note.body).length} palavras · {[...note.body].length} caracteres · salvo</span><ToolActions copyText={note.body}><Button size="sm" variant="outline" onClick={() => downloadText(`${note.title || "nota"}.md`, `# ${note.title}\n\n${note.body}`)}>Baixar .md</Button><Button size="sm" variant="ghost" onClick={() => { setNotes(notes.filter((n) => n.id !== cur)); setCur(notes.find((n) => n.id !== cur)?.id ?? null); }}><Trash2 className="h-4 w-4" />Excluir</Button></ToolActions></div></div> : <div className="flex min-h-[240px] items-center justify-center rounded-2xl border border-dashed text-sm text-fg-3">Crie uma nota para começar.</div>}
+    </div>
+  );
+}
+
+/* ------------------------------- Eisenhower ------------------------------- */
 type Quad = "do" | "schedule" | "delegate" | "delete";
-interface EItem { id: string; text: string; q: Quad; }
-const QUADS: { q: Quad; title: string; sub: string; tone: string }[] = [{ q: "do", title: "Fazer agora", sub: "Urgente + importante", tone: "border-accent" }, { q: "schedule", title: "Agendar", sub: "Importante, não urgente", tone: "border-signal" }, { q: "delegate", title: "Delegar", sub: "Urgente, não importante", tone: "border-amber" }, { q: "delete", title: "Eliminar", sub: "Nem urgente nem importante", tone: "border-line" }];
-export function MatrizEisenhower({ meta }: ToolProps) {
-  const [items, setItems] = useLocalStorage<EItem[]>("eisenhower", []);
-  const [text, setText] = useState("");
-  const [q, setQ] = useState<Quad>("do");
-  const add = (e: React.FormEvent) => { e.preventDefault(); if (!text.trim()) return; setItems((all) => [...all, { id: uid(), text: text.trim(), q }]); setText(""); };
-  const move = (id: string, to: Quad) => setItems((all) => all.map((i) => (i.id === id ? { ...i, q: to } : i)));
+const QUADS: { k: Quad; title: string; sub: string; cls: string }[] = [{ k: "do", title: "Fazer agora", sub: "urgente + importante", cls: "border-danger/30" }, { k: "schedule", title: "Agendar", sub: "importante, não urgente", cls: "border-brand/30" }, { k: "delegate", title: "Delegar", sub: "urgente, não importante", cls: "border-warn/30" }, { k: "delete", title: "Eliminar", sub: "nem urgente nem importante", cls: "border-line" }];
+export function MatrizEisenhower() {
+  const [items, setItems] = useLocalStorage<{ id: string; text: string; q: Quad }[]>("eisenhower", []);
+  const [text, setText] = useState(""); const [q, setQ] = useState<Quad>("do"); const [drag, setDrag] = useState<string | null>(null);
+  const add = () => { if (!text.trim()) return; setItems([...items, { id: uid(), text: text.trim(), q }]); setText(""); };
   return (
-    <ToolShell meta={meta}>
-      <form onSubmit={add} className="grid gap-2 sm:grid-cols-[1fr_200px_auto]">
-        <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Tarefa…" aria-label="Tarefa" />
-        <Select value={q} onChange={(e) => setQ(e.target.value as Quad)}>{QUADS.map((x) => <option key={x.q} value={x.q}>{x.title}</option>)}</Select>
-        <Button type="submit"><Plus className="h-4 w-4" /> Adicionar</Button>
-      </form>
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        {QUADS.map((Q) => (
-          <div key={Q.q} className={`border-t-2 ${Q.tone} border-x border-b border-line p-4 min-h-[160px]`}>
-            <div className="flex items-baseline justify-between"><h3 className="font-display text-lg font-semibold">{Q.title}</h3><span className="font-mono text-[10px] uppercase tracking-wider text-subtle">{Q.sub}</span></div>
-            <ul className="mt-3 space-y-1.5">
-              <AnimatePresence>
-                {items.filter((i) => i.q === Q.q).map((i) => (
-                  <motion.li key={i.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="group flex items-center gap-2 border border-line bg-page px-2 py-1.5 text-sm">
-                    <span className="flex-1">{i.text}</span>
-                    <Select value={i.q} onChange={(e) => move(i.id, e.target.value as Quad)} className="h-7 w-28 text-[11px]" aria-label="Mover">{QUADS.map((x) => <option key={x.q} value={x.q}>{x.title}</option>)}</Select>
-                    <button onClick={() => setItems((all) => all.filter((x) => x.id !== i.id))} aria-label="Remover" className="text-subtle hover:text-red-600"><Trash2 className="h-3.5 w-3.5" /></button>
-                  </motion.li>
-                ))}
-              </AnimatePresence>
-            </ul>
-          </div>
-        ))}
-      </div>
-      <Actions copy={QUADS.map((Q) => `${Q.title}:\n${items.filter((i) => i.q === Q.q).map((i) => `- ${i.text}`).join("\n") || "-"}`).join("\n\n")} onClear={() => setItems([])} />
-    </ToolShell>
+    <div className="space-y-4">
+      <form onSubmit={(e) => { e.preventDefault(); add(); }} className="flex flex-wrap gap-2"><Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Tarefa…" className="min-w-[200px] flex-1" /><Select value={q} onChange={(e) => setQ(e.target.value as Quad)} className="w-44">{QUADS.map((x) => <option key={x.k} value={x.k}>{x.title}</option>)}</Select><Button type="submit"><Plus className="h-4 w-4" />Adicionar</Button></form>
+      <div className="grid gap-3 sm:grid-cols-2">{QUADS.map((qd) => (
+        <div key={qd.k} onDragOver={(e) => e.preventDefault()} onDrop={() => { if (drag) setItems(items.map((i) => (i.id === drag ? { ...i, q: qd.k } : i))); setDrag(null); }} className={cn("min-h-[160px] rounded-2xl border-2 bg-surface p-4", qd.cls)}>
+          <p className="font-medium">{qd.title}</p><p className="mb-3 text-xs text-fg-3">{qd.sub}</p>
+          <ul className="space-y-1.5">{items.filter((i) => i.q === qd.k).map((i) => <li key={i.id} draggable onDragStart={() => setDrag(i.id)} className="flex cursor-grab items-center gap-2 rounded-lg border bg-surface-2/60 px-3 py-2 text-sm active:cursor-grabbing"><span className="flex-1">{i.text}</span><select value={i.q} onChange={(e) => setItems(items.map((x) => (x.id === i.id ? { ...x, q: e.target.value as Quad } : x)))} className="rounded border bg-surface text-[11px] sm:hidden">{QUADS.map((x) => <option key={x.k} value={x.k}>{x.title}</option>)}</select><button onClick={() => setItems(items.filter((x) => x.id !== i.id))} className="text-fg-3 hover:text-danger" aria-label="Remover"><Trash2 className="h-3.5 w-3.5" /></button></li>)}</ul>
+        </div>
+      ))}</div>
+      <p className="text-xs text-fg-3">Arraste entre quadrantes (desktop) ou use o seletor (mobile). Dados salvos localmente.</p>
+    </div>
   );
 }
 
-/* ----------------------------- Roleta de decisão -------------------------- */
-export function RoletaDeDecisao({ meta }: ToolProps) {
-  const [text, setText] = useState("Pizza\nSushi\nHambúrguer\nComida árabe\nSalada");
-  const [remove, setRemove] = useState(false);
-  const [spinning, setSpinning] = useState(false);
-  const [current, setCurrent] = useState<string | null>(null);
-  const [winner, setWinner] = useState<string | null>(null);
-  const [history, setHistory] = useState<string[]>([]);
-  const options = useMemo(() => text.split("\n").map((s) => s.trim()).filter(Boolean), [text]);
-  const spin = () => {
-    if (options.length < 2 || spinning) return;
-    setSpinning(true); setWinner(null);
-    const a = new Uint32Array(1); crypto.getRandomValues(a);
-    const target = a[0] % options.length;
-    const totalSteps = options.length * 3 + target;
-    let step = 0;
-    const run = () => {
-      setCurrent(options[step % options.length]);
-      step++;
-      if (step <= totalSteps) setTimeout(run, 40 + Math.pow(step / totalSteps, 3) * 320);
-      else { const w = options[target]; setWinner(w); setSpinning(false); setHistory((h) => [w, ...h].slice(0, 8)); if (remove) setText(options.filter((_, i) => i !== target).join("\n")); }
-    };
-    run();
-  };
+/* --------------------------------- Roleta --------------------------------- */
+export function RoletaDeDecisao() {
+  const [opts, setOpts] = useLocalStorage<string[]>("roulette", ["Pizza", "Japonês", "Hambúrguer", "Salada", "Mexicano"]);
+  const [text, setText] = useState(""); const [rot, setRot] = useState(0); const [spinning, setSpinning] = useState(false); const [result, setResult] = useState<string | null>(null);
+  const ref = useRef(0);
+  const colors = ["#1d4ed8", "#0f766e", "#b45309", "#7c3aed", "#be123c", "#4d7c0f", "#0369a1", "#a21caf"];
+  const spin = () => { if (opts.length < 2 || spinning) return; const idx = rnd(opts.length); const seg = 360 / opts.length; const target = 360 * 6 + (360 - (idx * seg + seg / 2)); ref.current += target - (ref.current % 360); setRot(ref.current); setSpinning(true); setResult(null); setTimeout(() => { setSpinning(false); setResult(opts[idx]); }, 4200); };
+  const grad = `conic-gradient(${opts.map((_, i) => `${colors[i % colors.length]} ${(i / opts.length) * 100}% ${((i + 1) / opts.length) * 100}%`).join(", ")})`;
   return (
-    <ToolShell meta={meta} examples={[{ label: "Onde almoçar", onClick: () => setText("Pizza\nSushi\nHambúrguer\nComida árabe\nSalada") }, { label: "Quem apresenta", onClick: () => setText("Ana\nBruno\nCarla\nDiego") }]}>
-      <div className="grid gap-6 md:grid-cols-[1fr_1fr]">
-        <div>
-          <Field label={`Opções (${options.length}) — uma por linha`}><Textarea value={text} onChange={(e) => setText(e.target.value)} rows={8} /></Field>
-          <label className="mt-3 flex items-center gap-2 text-sm"><input type="checkbox" checked={remove} onChange={(e) => setRemove(e.target.checked)} className="accent-[var(--color-accent)]" /> Remover sorteado da lista</label>
-        </div>
-        <div className="flex flex-col items-center justify-center border border-strong p-6 text-center">
-          <div className="eyebrow">{spinning ? "Sorteando…" : winner ? "Resultado" : "Pronto"}</div>
-          <motion.div key={current ?? "x"} initial={{ opacity: 0.5, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.08 }} className={`mt-3 min-h-[3rem] font-display text-3xl font-bold tracking-tight sm:text-4xl ${winner ? "text-accent" : ""}`}>{winner ?? current ?? "—"}</motion.div>
-          <Button className="mt-6" size="lg" variant="accent" onClick={spin} disabled={spinning || options.length < 2}>{spinning ? "Girando…" : "Girar"}</Button>
-          {options.length < 2 && <p className="mt-2 text-xs text-subtle">Adicione pelo menos 2 opções.</p>}
-        </div>
+    <div className="grid gap-8 lg:grid-cols-2">
+      <div className="flex flex-col items-center">
+        <div className="relative"><div className="absolute -top-1 left-1/2 z-10 h-0 w-0 -translate-x-1/2 border-x-[12px] border-t-[20px] border-x-transparent border-t-fg" /><motion.div className="relative h-72 w-72 rounded-full border-4 border-surface shadow-pop" style={{ background: grad }} animate={{ rotate: rot }} transition={{ duration: 4, ease: [0.15, 0.85, 0.15, 1] }}>{opts.map((o, i) => <span key={i} className="absolute left-1/2 top-1/2 origin-left text-[12px] font-medium text-white drop-shadow" style={{ transform: `rotate(${(i + 0.5) * (360 / opts.length) - 90}deg) translateX(40px)`, maxWidth: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o}</span>)}</motion.div></div>
+        <Button size="lg" className="mt-6" onClick={spin} disabled={spinning || opts.length < 2}>{spinning ? "Girando…" : "Girar"}</Button>
+        <AnimatePresence>{result && <motion.p initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="mt-4 rounded-xl border bg-surface px-5 py-3 text-lg font-semibold">→ {result}</motion.p>}</AnimatePresence>
       </div>
-      {history.length > 0 && <div className="mt-5"><div className="eyebrow mb-2">Últimos sorteios</div><div className="flex flex-wrap gap-1.5">{history.map((h, i) => <span key={i} className="border border-line px-2 py-1 text-xs">{h}</span>)}</div></div>}
-    </ToolShell>
+      <div className="space-y-3"><form onSubmit={(e) => { e.preventDefault(); if (text.trim() && opts.length < 12) { setOpts([...opts, text.trim()]); setText(""); } }} className="flex gap-2"><Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Nova opção…" /><Button type="submit" disabled={opts.length >= 12}><Plus className="h-4 w-4" /></Button></form><ul className="divide-y rounded-2xl border bg-surface">{opts.map((o, i) => <li key={i} className="flex items-center gap-3 px-4 py-2.5 text-sm"><span className="h-3 w-3 rounded-full" style={{ background: colors[i % colors.length] }} /><span className="flex-1">{o}</span><button onClick={() => setOpts(opts.filter((_, j) => j !== i))} className="text-fg-3 hover:text-danger" aria-label="Remover"><Trash2 className="h-4 w-4" /></button></li>)}</ul><p className="text-xs text-fg-3">De 2 a 12 opções. Resultado escolhido com aleatoriedade criptográfica.</p></div>
+    </div>
   );
 }
 
-/* ------------------------------ Gerador de OKR ---------------------------- */
-export function GeradorDeOkr({ meta }: ToolProps) {
-  const [obj, setObj] = useState("crescer a base de clientes pagantes");
-  const [area, setArea] = useState("vendas");
-  const [q, setQ] = useState("Q3");
-  const krs = useMemo(() => {
-    const bank: Record<string, [string, string, string][]> = {
-      vendas: [["número de clientes pagantes", "120", "180"], ["taxa de conversão de trial", "8%", "12%"], ["ticket médio", "R$ 290", "R$ 340"], ["ciclo de vendas", "32 dias", "24 dias"]],
-      marketing: [["leads qualificados por mês", "400", "650"], ["custo por lead", "R$ 38", "R$ 28"], ["tráfego orgânico mensal", "25 mil", "40 mil"], ["taxa de abertura da newsletter", "31%", "38%"]],
-      produto: [["ativação em 7 dias", "42%", "55%"], ["retenção D30", "28%", "36%"], ["NPS", "38", "50"], ["tempo até o primeiro valor", "18 min", "8 min"]],
-      pessoas: [["eNPS", "22", "40"], ["tempo médio de contratação", "48 dias", "30 dias"], ["turnover voluntário", "14%", "9%"], ["cobertura de 1:1 quinzenal", "60%", "95%"]],
-      pessoal: [["horas de estudo por semana", "2", "5"], ["projetos entregues", "1", "3"], ["dias com exercício", "8/mês", "16/mês"], ["livros lidos no trimestre", "1", "3"]],
-    };
-    const list = bank[area] ?? bank.vendas;
-    return list.slice(0, 3).map(([m, a, b]) => ({ text: `${m.charAt(0).toUpperCase() + m.slice(1)}: de ${a} para ${b} até o fim do ${q}`, initiatives: [`Definir dono e dashboard semanal para ${m}`, `Rodar 2 experimentos por mês focados em ${m}`] }));
-  }, [area, q]);
-  const doc = `OBJETIVO (${q}): ${obj.charAt(0).toUpperCase() + obj.slice(1)}\n\n${krs.map((k, i) => `KR${i + 1}. ${k.text}\n   Iniciativas:\n   - ${k.initiatives.join("\n   - ")}`).join("\n\n")}\n\nChecklist de qualidade:\n[ ] Cada KR tem métrica, baseline e alvo\n[ ] Nenhum KR é uma tarefa\n[ ] Alvos são ambiciosos (70% de atingimento = sucesso)\n[ ] Um dono por KR`;
+/* ----------------------------------- OKR ---------------------------------- */
+export const GeradorDeOkr = () => <TemplateTool cta="Gerar OKR" fields={[{ key: "obj", label: "Meta (mesmo que vaga)", placeholder: "melhorar a retenção de clientes" }, { key: "area", label: "Área", type: "select", default: "produto", options: ["produto", "marketing", "vendas", "operações", "pessoas", "financeiro", "pessoal"].map((x) => ({ value: x, label: x })) }, { key: "prazo", label: "Prazo", type: "select", default: "trimestre", options: ["mês", "trimestre", "semestre", "ano"].map((x) => ({ value: x, label: x })) }, { key: "base", label: "Situação atual (número, se souber)", placeholder: "churn mensal de 6%" }]} build={(v) => { if (!v.obj) return "Descreva a meta."; const KR: Record<string, string[]> = { produto: ["Aumentar ativação em 7 dias de X% para Y%", "Reduzir tempo até o primeiro valor de X para Y min", "Elevar NPS de X para Y", "Reduzir tickets de suporte por usuário em Z%"], marketing: ["Crescer tráfego orgânico de X para Y visitas/mês", "Aumentar taxa de conversão de visitante para lead de X% para Y%", "Reduzir CAC de R$ X para R$ Y", "Publicar N conteúdos que ranqueiem no top 10"], vendas: ["Aumentar taxa de fechamento de X% para Y%", "Reduzir ciclo de vendas de X para Y dias", "Elevar ticket médio de R$ X para R$ Y", "Gerar N oportunidades qualificadas por mês"], operações: ["Reduzir tempo de processo de X para Y horas", "Diminuir erros/retrabalho de X% para Y%", "Automatizar N etapas manuais", "Atingir SLA de X% nas entregas"], pessoas: ["Elevar eNPS de X para Y", "Reduzir turnover voluntário de X% para Y%", "Concluir plano de desenvolvimento para 100% do time", "Reduzir tempo de contratação de X para Y dias"], financeiro: ["Aumentar margem bruta de X% para Y%", "Reduzir despesas fixas em Z%", "Atingir R$ X de caixa livre", "Reduzir inadimplência de X% para Y%"], pessoal: ["Praticar N vezes por semana durante o período", "Concluir X unidades (livros, cursos, km)", "Reduzir métrica ruim de X para Y", "Manter sequência de N dias"] }; const krs = KR[v.area] ?? KR.produto; return `OBJETIVO (${v.prazo})\n${v.obj.charAt(0).toUpperCase() + v.obj.slice(1)} — de forma visível para clientes e time.\n\nRESULTADOS-CHAVE\n${krs.slice(0, 3).map((k, i) => `KR${i + 1}. ${k}${i === 0 && v.base ? `  (baseline: ${v.base})` : ""}`).join("\n")}\n\nINICIATIVAS (o que vamos fazer para mover os KRs)\n- [iniciativa 1 — dona/dono, prazo]\n- [iniciativa 2]\n- [iniciativa 3]\n\nCHECK-IN\n- Ritmo: semanal, 15 min. Cada KR recebe confiança 0–10.\n- Regra: KR sem número não é KR. Substitua X/Y por valores reais antes de começar.\n- Ao final do ${v.prazo}: nota 0,7 é sucesso; 1,0 sugere meta fácil demais.`; }} />;
+
+/* ------------------------------- Hábitos ---------------------------------- */
+export function RastreadorDeHabitos() {
+  const [habits, setHabits] = useLocalStorage<{ id: string; name: string; days: string[] }[]>("habits", []);
+  const [name, setName] = useState("");
+  const days = useMemo(() => Array.from({ length: 14 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - (13 - i)); return d.toISOString().slice(0, 10); }), []);
+  const toggle = (id: string, day: string) => setHabits(habits.map((h) => (h.id === id ? { ...h, days: h.days.includes(day) ? h.days.filter((x) => x !== day) : [...h.days, day] } : h)));
+  const streak = (h: { days: string[] }) => { let s = 0; const d = new Date(); for (;;) { const k = d.toISOString().slice(0, 10); if (h.days.includes(k)) { s++; d.setDate(d.getDate() - 1); } else if (s === 0 && k === new Date().toISOString().slice(0, 10)) { d.setDate(d.getDate() - 1); } else break; if (s > 999) break; } return s; };
   return (
-    <ToolShell meta={meta}>
-      <ToolGrid cols={3}>
-        <Field label="Objetivo (amplo, inspirador)"><Input value={obj} onChange={(e) => setObj(e.target.value)} /></Field>
-        <Field label="Área"><Select value={area} onChange={(e) => setArea(e.target.value)}><option value="vendas">Vendas</option><option value="marketing">Marketing</option><option value="produto">Produto</option><option value="pessoas">Pessoas / RH</option><option value="pessoal">Pessoal</option></Select></Field>
-        <Field label="Período"><Segmented value={q} onChange={setQ} options={["Q1", "Q2", "Q3", "Q4"].map((x) => ({ value: x, label: x }))} /></Field>
-      </ToolGrid>
-      <ResultPanel>
-        <div className="grid gap-6 md:grid-cols-2">
-          <div>
-            <BigNumber label="Objetivo" value={<span className="text-2xl sm:text-3xl">{obj || "—"}</span>} />
-            <ol className="mt-5 space-y-3">{krs.map((k, i) => <li key={i} className="border-l-2 border-accent pl-3"><div className="text-sm font-medium">KR{i + 1}. {k.text}</div><ul className="mt-1 text-xs text-muted">{k.initiatives.map((x) => <li key={x}>· {x}</li>)}</ul></li>)}</ol>
-          </div>
-          <OutputArea value={doc} rows={16} mono={false} />
-        </div>
-        <Actions copy={doc} />
-      </ResultPanel>
-    </ToolShell>
+    <div className="space-y-4">
+      <form onSubmit={(e) => { e.preventDefault(); if (name.trim() && habits.length < 10) { setHabits([...habits, { id: uid(), name: name.trim(), days: [] }]); setName(""); } }} className="flex gap-2"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Novo hábito (ex.: ler 20 min)" /><Button type="submit" disabled={habits.length >= 10}><Plus className="h-4 w-4" />Adicionar</Button></form>
+      {habits.length ? (
+        <div className="overflow-x-auto rounded-2xl border bg-surface"><table className="w-full text-sm"><thead><tr className="border-b text-xs text-fg-3"><th className="sticky left-0 bg-surface px-4 py-2 text-left font-medium">Hábito</th>{days.map((d) => <th key={d} className="px-1 py-2 font-normal"><span className="block">{["D", "S", "T", "Q", "Q", "S", "S"][new Date(d + "T00:00:00").getDay()]}</span><span className="text-[10px]">{d.slice(8)}</span></th>)}<th className="px-3 py-2 font-medium">Sequência</th><th className="px-3 py-2 font-medium">14 d</th><th /></tr></thead>
+          <tbody>{habits.map((h) => <tr key={h.id} className="border-b last:border-0"><td className="sticky left-0 bg-surface px-4 py-2 font-medium">{h.name}</td>{days.map((d) => { const on = h.days.includes(d); return <td key={d} className="px-1 py-2 text-center"><button onClick={() => toggle(h.id, d)} className={cn("h-7 w-7 rounded-md border transition-all", on ? "border-brand bg-brand text-brand-fg scale-100" : "hover:border-line-2 hover:bg-surface-2")} aria-label={`${h.name} em ${d}`} aria-pressed={on}>{on && <Check className="mx-auto h-3.5 w-3.5" />}</button></td>; })}<td className="px-3 py-2 text-center tabular-nums">🔥 {streak(h)}</td><td className="px-3 py-2 text-center tabular-nums text-fg-3">{fmt((days.filter((d) => h.days.includes(d)).length / 14) * 100, 0)}%</td><td className="px-2"><button onClick={() => setHabits(habits.filter((x) => x.id !== h.id))} className="text-fg-3 hover:text-danger" aria-label="Remover"><Trash2 className="h-4 w-4" /></button></td></tr>)}</tbody></table></div>
+      ) : <div className="rounded-2xl border border-dashed p-10 text-center text-sm text-fg-3">Comece com 1 a 3 hábitos. Clique nos dias para marcar.</div>}
+    </div>
+  );
+}
+
+export function CalculadoraDeMetas() {
+  const [f, setF] = useState({ meta: "24", unidade: "livros", prazo: "", atual: "0", mode: "corridos" });
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
+  const r = useMemo(() => { const meta = parseFloat(f.meta.replace(",", ".")), atual = parseFloat(f.atual.replace(",", ".")) || 0; if (!Number.isFinite(meta) || !f.prazo) return null; const end = new Date(f.prazo + "T00:00:00"), now = new Date(); now.setHours(0, 0, 0, 0); if (end <= now) return { err: "O prazo precisa ser no futuro." }; let dias = 0; const d = new Date(now); while (d < end) { if (f.mode === "corridos" || d.getDay() % 6 !== 0) dias++; d.setDate(d.getDate() + 1); } const rest = Math.max(0, meta - atual); return { dias, porDia: rest / dias, porSemana: (rest / dias) * (f.mode === "corridos" ? 7 : 5), porMes: (rest / dias) * (f.mode === "corridos" ? 30.44 : 21.7), rest, prog: meta ? (atual / meta) * 100 : 0 }; }, [f]);
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2"><Field label="Meta total"><Input value={f.meta} onChange={set("meta")} /></Field><Field label="Unidade"><Input value={f.unidade} onChange={set("unidade")} placeholder="livros, km, R$, páginas" /></Field><Field label="Prazo final"><Input type="date" value={f.prazo} onChange={set("prazo")} /></Field><Field label="Progresso atual"><Input value={f.atual} onChange={set("atual")} /></Field><Field label="Contar" className="sm:col-span-2"><Select value={f.mode} onChange={set("mode")}><option value="corridos">Dias corridos</option><option value="uteis">Apenas dias úteis</option></Select></Field></div>
+      {r ? "err" in r ? <ResultBox title="Atenção"><p className="text-sm text-danger">{r.err}</p></ResultBox> : <ResultBox copyText={`${fmt(r.porDia, 2)} ${f.unidade}/dia`}><div className="grid grid-cols-2 gap-4"><Stat label="Por dia" value={`${fmt(r.porDia, 2)} ${f.unidade}`} big /><Stat label="Por semana" value={fmt(r.porSemana, 1)} /><Stat label="Por mês" value={fmt(r.porMes, 1)} /><Stat label="Dias restantes" value={String(r.dias)} /></div><div className="mt-4 border-t pt-4"><div className="mb-1 flex justify-between text-xs text-fg-3"><span>Progresso</span><span>{fmt(r.prog, 0)}% · faltam {fmt(r.rest, 1)} {f.unidade}</span></div><div className="h-2 rounded-full bg-line"><div className="h-full rounded-full bg-brand" style={{ width: `${Math.min(100, r.prog)}%` }} /></div></div></ResultBox> : <div className="flex min-h-[160px] items-center justify-center rounded-2xl border border-dashed text-sm text-fg-3">Defina a meta e o prazo.</div>}
+    </div>
   );
 }

@@ -1,769 +1,289 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { ToolMeta } from "@/lib/types";
-import { formatCurrency, formatNumber, parseNum } from "@/lib/utils";
-import { Field, Input, Segmented, Select, Toggle } from "@/components/ui/primitives";
-import { Actions, Bar, BigNumber, ErrorText, KV, ResultPanel, ToolGrid, ToolShell } from "./ToolShell";
+import { useEffect, useMemo, useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
+import { Button, Field, Input, Select } from "@/components/ui/primitives";
+import { ResultBox, Stat } from "@/components/ui/feedback";
+import { useLocalStorage } from "@/lib/store";
+import { formatDate, parseNum } from "@/lib/utils";
+import { EmptyResult, fmt, money, pct, shuffle, ToolActions, type FormulaConfig } from "./ToolShell";
 
-export type ToolProps = { meta: ToolMeta };
-
-export function useFields<T extends Record<string, string | boolean>>(defaults: T) {
-  const [v, setV] = useState<T>(defaults);
-  const set = useCallback(<K extends keyof T>(k: K, val: T[K]) => setV((p) => ({ ...p, [k]: val })), []);
-  const reset = useCallback(() => setV(defaults), [defaults]);
-  const apply = useCallback((partial: Partial<T>) => setV((p) => ({ ...p, ...partial })), []);
-  return { v, set, reset, apply };
+const bad = (...xs: number[]) => xs.some((x) => !Number.isFinite(x));
+const pmt = (pv: number, i: number, n: number) => (i === 0 ? pv / n : (pv * i) / (1 - Math.pow(1 + i, -n)));
+const toDate = (s: string) => { const d = new Date(s + "T00:00:00"); return Number.isNaN(d.getTime()) ? null : d; };
+const DAY = 86400000;
+const today = () => new Date().toISOString().slice(0, 10);
+const WD = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+function ymd(a: Date, b: Date) {
+  let y = b.getFullYear() - a.getFullYear(), m = b.getMonth() - a.getMonth(), d = b.getDate() - a.getDate();
+  if (d < 0) { m--; d += new Date(b.getFullYear(), b.getMonth(), 0).getDate(); }
+  if (m < 0) { y--; m += 12; }
+  return { y, m, d };
 }
+function businessDays(a: Date, b: Date) { let c = 0; const d = new Date(a); while (d < b) { const w = d.getDay(); if (w !== 0 && w !== 6) c++; d.setDate(d.getDate() + 1); } return c; }
 
-const cur = (n: number) => formatCurrency(n);
-const num = (n: number, d = 2) => formatNumber(n, d);
-const pct = (n: number, d = 2) => `${formatNumber(n, d)}%`;
+export const CALC_CONFIGS: Record<string, FormulaConfig> = {
+  porcentagem: {
+    fields: [{ key: "mode", label: "O que você quer calcular?", type: "select", default: "of", options: [{ value: "of", label: "Quanto é X% de Y" }, { value: "is", label: "X é que porcentagem de Y" }, { value: "var", label: "Variação de X para Y" }] }, { key: "a", label: "Valor X", placeholder: "15" }, { key: "b", label: "Valor Y", placeholder: "240" }],
+    compute: (v, n) => {
+      if (bad(n.a, n.b)) return null;
+      if (v.mode === "of") return { rows: [{ label: `${fmt(n.a)}% de ${fmt(n.b)}`, value: fmt((n.a * n.b) / 100), big: true }], formula: `${fmt(n.b)} × ${fmt(n.a)} ÷ 100` };
+      if (v.mode === "is") return n.b === 0 ? { error: "Y não pode ser zero." } : { rows: [{ label: `${fmt(n.a)} é`, value: pct((n.a / n.b) * 100), hint: `de ${fmt(n.b)}`, big: true }], formula: `${fmt(n.a)} ÷ ${fmt(n.b)} × 100` };
+      if (n.a === 0) return { error: "O valor inicial não pode ser zero." };
+      const d = ((n.b - n.a) / Math.abs(n.a)) * 100;
+      return { rows: [{ label: "Variação", value: `${d >= 0 ? "+" : ""}${pct(d)}`, hint: d >= 0 ? "aumento" : "redução", big: true }, { label: "Diferença absoluta", value: fmt(n.b - n.a) }], formula: `(${fmt(n.b)} − ${fmt(n.a)}) ÷ ${fmt(n.a)} × 100` };
+    },
+  },
+  desconto: {
+    fields: [{ key: "p", label: "Preço original", placeholder: "199,90", suffix: "R$" }, { key: "d", label: "Desconto", placeholder: "30", suffix: "%" }, { key: "d2", label: "Segundo desconto (opcional)", placeholder: "10", suffix: "%" }],
+    compute: (_v, n) => { if (bad(n.p, n.d)) return null; const p1 = n.p * (1 - n.d / 100); const p2 = Number.isFinite(n.d2) ? p1 * (1 - n.d2 / 100) : p1; const eff = (1 - p2 / n.p) * 100; return { rows: [{ label: "Preço final", value: money(p2), big: true }, { label: "Você economiza", value: money(n.p - p2), hint: `desconto efetivo de ${pct(eff)}` }], formula: `${money(n.p)} × (1 − ${fmt(n.d)}%)${Number.isFinite(n.d2) ? ` × (1 − ${fmt(n.d2)}%)` : ""}` }; },
+  },
+  "aumento-percentual": {
+    fields: [{ key: "v", label: "Valor atual", placeholder: "3000", suffix: "R$" }, { key: "p", label: "Aumento", placeholder: "8", suffix: "%" }],
+    compute: (_v, n) => bad(n.v, n.p) ? null : { rows: [{ label: "Novo valor", value: money(n.v * (1 + n.p / 100)), big: true }, { label: "Acréscimo", value: money(n.v * n.p / 100) }], formula: `${money(n.v)} × (1 + ${fmt(n.p)}%)` },
+  },
+  "variacao-percentual": {
+    fields: [{ key: "a", label: "Valor inicial", placeholder: "1200" }, { key: "b", label: "Valor final", placeholder: "1500" }],
+    compute: (_v, n) => { if (bad(n.a, n.b)) return null; if (n.a === 0) return { error: "O valor inicial não pode ser zero." }; const d = ((n.b - n.a) / Math.abs(n.a)) * 100; const dp = (Math.abs(n.b - n.a) / ((n.a + n.b) / 2)) * 100; return { rows: [{ label: "Variação percentual", value: `${d >= 0 ? "+" : ""}${pct(d)}`, big: true, hint: d >= 0 ? "alta" : "queda" }, { label: "Diferença absoluta", value: fmt(n.b - n.a) }, { label: "Diferença percentual (média)", value: pct(dp) }], formula: `(${fmt(n.b)} − ${fmt(n.a)}) ÷ |${fmt(n.a)}| × 100` }; },
+  },
+  "juros-simples": {
+    fields: [{ key: "c", label: "Capital", placeholder: "1000", suffix: "R$" }, { key: "i", label: "Taxa por período", placeholder: "2", suffix: "%" }, { key: "t", label: "Períodos", placeholder: "6" }],
+    compute: (_v, n) => bad(n.c, n.i, n.t) ? null : { rows: [{ label: "Juros", value: money(n.c * (n.i / 100) * n.t), big: true }, { label: "Montante", value: money(n.c * (1 + (n.i / 100) * n.t)) }], formula: `J = ${money(n.c)} × ${fmt(n.i)}% × ${fmt(n.t)}` },
+  },
+  "juros-compostos": {
+    fields: [{ key: "c", label: "Capital inicial", placeholder: "10000", suffix: "R$" }, { key: "a", label: "Aporte mensal", placeholder: "500", suffix: "R$", default: "0" }, { key: "i", label: "Taxa de juros", placeholder: "0,8", suffix: "%" }, { key: "iu", label: "Unidade da taxa", type: "select", default: "m", options: [{ value: "m", label: "ao mês" }, { value: "a", label: "ao ano" }] }, { key: "t", label: "Prazo", placeholder: "120" }, { key: "tu", label: "Unidade do prazo", type: "select", default: "m", options: [{ value: "m", label: "meses" }, { value: "a", label: "anos" }] }],
+    compute: (v, n) => {
+      if (bad(n.c, n.i, n.t)) return null;
+      const a = Number.isFinite(n.a) ? n.a : 0;
+      const im = v.iu === "a" ? Math.pow(1 + n.i / 100, 1 / 12) - 1 : n.i / 100;
+      const months = v.tu === "a" ? Math.round(n.t * 12) : Math.round(n.t);
+      if (months <= 0 || months > 1200) return { error: "Informe um prazo entre 1 e 1200 meses." };
+      let bal = n.c; const table: string[][] = [["Mês", "Aporte acumulado", "Juros acumulados", "Saldo"]]; let inv = n.c;
+      for (let m = 1; m <= months; m++) { bal = bal * (1 + im) + a; inv += a; if (m % (months > 120 ? 12 : months > 36 ? 6 : 1) === 0 || m === months) table.push([String(m), money(inv), money(bal - inv), money(bal)]); }
+      return { rows: [{ label: "Montante final", value: money(bal), big: true }, { label: "Total investido", value: money(inv) }, { label: "Total em juros", value: money(bal - inv), hint: `${pct(((bal - inv) / inv) * 100, 1)} de ganho` }, { label: "Taxa mensal equivalente", value: pct(im * 100, 4) }], formula: "M = C × (1+i)^t + A × [((1+i)^t − 1) ÷ i]", table };
+    },
+  },
+  "regra-de-tres": {
+    fields: [{ key: "tipo", label: "Tipo", type: "select", default: "d", options: [{ value: "d", label: "Diretamente proporcional" }, { value: "i", label: "Inversamente proporcional" }] }, { key: "a", label: "A", placeholder: "3" }, { key: "b", label: "B (está para A)", placeholder: "45" }, { key: "c", label: "C", placeholder: "7" }],
+    compute: (v, n) => { if (bad(n.a, n.b, n.c)) return null; if (n.a === 0 || (v.tipo === "i" && n.c === 0)) return { error: "Divisão por zero." }; const x = v.tipo === "d" ? (n.b * n.c) / n.a : (n.a * n.b) / n.c; return { rows: [{ label: "X (está para C)", value: fmt(x, 4), big: true }], formula: v.tipo === "d" ? `X = ${fmt(n.b)} × ${fmt(n.c)} ÷ ${fmt(n.a)}` : `X = ${fmt(n.a)} × ${fmt(n.b)} ÷ ${fmt(n.c)}` }; },
+  },
+  imc: {
+    fields: [{ key: "p", label: "Peso", placeholder: "70", suffix: "kg" }, { key: "h", label: "Altura", placeholder: "175", suffix: "cm" }],
+    compute: (_v, n) => { if (bad(n.p, n.h) || n.h <= 0) return null; const h = n.h > 3 ? n.h / 100 : n.h; const imc = n.p / (h * h); const cls = imc < 18.5 ? "Abaixo do peso" : imc < 25 ? "Peso normal" : imc < 30 ? "Sobrepeso" : imc < 35 ? "Obesidade grau I" : imc < 40 ? "Obesidade grau II" : "Obesidade grau III"; return { rows: [{ label: "IMC", value: fmt(imc, 1), hint: cls, big: true }, { label: "Faixa de peso saudável", value: `${fmt(18.5 * h * h, 1)} – ${fmt(24.9 * h * h, 1)} kg` }], formula: `${fmt(n.p)} ÷ ${fmt(h)}²`, note: "Classificação da OMS para adultos. Não substitui avaliação profissional." }; },
+  },
+  tmb: {
+    fields: [{ key: "s", label: "Sexo", type: "select", default: "m", options: [{ value: "m", label: "Masculino" }, { value: "f", label: "Feminino" }] }, { key: "i", label: "Idade", placeholder: "30", suffix: "anos" }, { key: "p", label: "Peso", placeholder: "80", suffix: "kg" }, { key: "h", label: "Altura", placeholder: "180", suffix: "cm" }, { key: "a", label: "Nível de atividade", type: "select", default: "1.55", options: [{ value: "1.2", label: "Sedentário" }, { value: "1.375", label: "Leve (1–3×/semana)" }, { value: "1.55", label: "Moderado (3–5×/semana)" }, { value: "1.725", label: "Intenso (6–7×/semana)" }, { value: "1.9", label: "Muito intenso" }] }],
+    compute: (v, n) => { if (bad(n.i, n.p, n.h)) return null; const tmb = 10 * n.p + 6.25 * n.h - 5 * n.i + (v.s === "m" ? 5 : -161); const tdee = tmb * parseFloat(v.a); return { rows: [{ label: "TMB (repouso)", value: `${fmt(tmb, 0)} kcal`, big: true }, { label: "Gasto diário estimado", value: `${fmt(tdee, 0)} kcal` }, { label: "Déficit leve (−400)", value: `${fmt(tdee - 400, 0)} kcal` }, { label: "Superávit leve (+300)", value: `${fmt(tdee + 300, 0)} kcal` }], formula: "Mifflin-St Jeor × fator de atividade" }; },
+  },
+  "agua-diaria": {
+    fields: [{ key: "p", label: "Peso", placeholder: "70", suffix: "kg" }, { key: "e", label: "Exercício por dia", placeholder: "30", suffix: "min", default: "0" }, { key: "c", label: "Clima", type: "select", default: "n", options: [{ value: "n", label: "Ameno" }, { value: "q", label: "Quente" }] }],
+    compute: (v, n) => { if (bad(n.p)) return null; const e = Number.isFinite(n.e) ? n.e : 0; const ml = n.p * 35 + e * 12 + (v.c === "q" ? 500 : 0); return { rows: [{ label: "Meta diária", value: `${fmt(ml / 1000, 2)} L`, big: true }, { label: "Copos de 250 ml", value: fmt(ml / 250, 0) }], formula: "35 ml/kg + 12 ml/min de exercício (+500 ml em clima quente)" }; },
+  },
+  "dividir-conta": {
+    fields: [{ key: "t", label: "Total da conta", placeholder: "380", suffix: "R$" }, { key: "p", label: "Pessoas", placeholder: "4" }, { key: "s", label: "Taxa de serviço", placeholder: "10", suffix: "%", default: "10" }],
+    compute: (_v, n) => { if (bad(n.t, n.p) || n.p <= 0) return null; const s = Number.isFinite(n.s) ? n.s : 0; const tot = n.t * (1 + s / 100); return { rows: [{ label: "Por pessoa", value: money(tot / n.p), big: true }, { label: "Total com serviço", value: money(tot) }, { label: "Serviço", value: money(tot - n.t) }] }; },
+  },
+  gorjeta: {
+    fields: [{ key: "t", label: "Valor da conta", placeholder: "86" }, { key: "g", label: "Gorjeta", placeholder: "18", suffix: "%", default: "15" }, { key: "p", label: "Pessoas", placeholder: "2", default: "1" }],
+    compute: (_v, n) => { if (bad(n.t, n.g)) return null; const p = Number.isFinite(n.p) && n.p > 0 ? n.p : 1; const tip = n.t * n.g / 100; return { rows: [{ label: "Gorjeta", value: fmt(tip), big: true }, { label: "Total", value: fmt(n.t + tip) }, { label: "Por pessoa", value: fmt((n.t + tip) / p) }] }; },
+  },
+  "margem-de-lucro": {
+    fields: [{ key: "c", label: "Custo", placeholder: "60", suffix: "R$" }, { key: "p", label: "Preço de venda", placeholder: "100", suffix: "R$" }, { key: "m", label: "ou margem desejada", placeholder: "40", suffix: "%" }],
+    compute: (_v, n) => { if (bad(n.c)) return null; if (Number.isFinite(n.p) && n.p > 0) { const l = n.p - n.c; return { rows: [{ label: "Margem", value: pct((l / n.p) * 100), big: true }, { label: "Lucro por unidade", value: money(l) }, { label: "Markup equivalente", value: pct((l / n.c) * 100) }], formula: "(preço − custo) ÷ preço" }; } if (Number.isFinite(n.m)) { if (n.m >= 100) return { error: "Margem deve ser menor que 100%." }; const p = n.c / (1 - n.m / 100); return { rows: [{ label: "Preço necessário", value: money(p), big: true }, { label: "Lucro por unidade", value: money(p - n.c) }], formula: "custo ÷ (1 − margem)" }; } return null; },
+  },
+  markup: {
+    fields: [{ key: "c", label: "Custo", placeholder: "50", suffix: "R$" }, { key: "k", label: "Markup", placeholder: "80", suffix: "%" }],
+    compute: (_v, n) => bad(n.c, n.k) ? null : { rows: [{ label: "Preço de venda", value: money(n.c * (1 + n.k / 100)), big: true }, { label: "Margem sobre o preço", value: pct((n.k / (100 + n.k)) * 100) }], formula: "custo × (1 + markup)" },
+  },
+  "ponto-de-equilibrio": {
+    fields: [{ key: "f", label: "Custos fixos mensais", placeholder: "8000", suffix: "R$" }, { key: "p", label: "Preço unitário", placeholder: "50", suffix: "R$" }, { key: "v", label: "Custo variável unitário", placeholder: "30", suffix: "R$" }],
+    compute: (_v, n) => { if (bad(n.f, n.p, n.v)) return null; const mc = n.p - n.v; if (mc <= 0) return { error: "Margem de contribuição negativa: o preço precisa superar o custo variável." }; const q = n.f / mc; return { rows: [{ label: "Unidades para equilíbrio", value: fmt(Math.ceil(q), 0), big: true }, { label: "Faturamento de equilíbrio", value: money(q * n.p) }, { label: "Margem de contribuição", value: `${money(mc)} (${pct((mc / n.p) * 100)})` }], formula: "fixos ÷ (preço − variável)" }; },
+  },
+  parcelamento: {
+    fields: [{ key: "v", label: "Valor da compra", placeholder: "2400", suffix: "R$" }, { key: "n", label: "Parcelas", placeholder: "12" }, { key: "i", label: "Juros ao mês", placeholder: "2,5", suffix: "%" }],
+    compute: (_v, n) => { if (bad(n.v, n.n, n.i) || n.n <= 0) return null; const p = pmt(n.v, n.i / 100, n.n); return { rows: [{ label: "Parcela", value: money(p), big: true }, { label: "Total pago", value: money(p * n.n) }, { label: "Juros totais", value: `${money(p * n.n - n.v)} (${pct(((p * n.n) / n.v - 1) * 100, 1)})` }], formula: "PMT = PV × i ÷ (1 − (1+i)^−n)" }; },
+  },
+  "financiamento-price": {
+    fields: [{ key: "v", label: "Valor financiado", placeholder: "300000", suffix: "R$" }, { key: "i", label: "Taxa anual", placeholder: "10", suffix: "%" }, { key: "n", label: "Prazo", placeholder: "360", suffix: "meses" }],
+    compute: (_v, n) => {
+      if (bad(n.v, n.i, n.n) || n.n <= 0) return null;
+      const im = Math.pow(1 + n.i / 100, 1 / 12) - 1; const p = pmt(n.v, im, n.n); const amort = n.v / n.n;
+      let sac = 0, bal = n.v; const table: string[][] = [["Mês", "Price", "SAC", "Saldo (SAC)"]];
+      for (let m = 1; m <= n.n; m++) { const parc = amort + bal * im; sac += parc; bal -= amort; if (m <= 12 || m % 60 === 0 || m === n.n) table.push([String(m), money(p), money(parc), money(Math.max(0, bal))]); }
+      return { rows: [{ label: "Parcela Price (fixa)", value: money(p), big: true }, { label: "1ª parcela SAC", value: money(amort + n.v * im), hint: `última ≈ ${money(amort * (1 + im))}` }, { label: "Total Price", value: money(p * n.n) }, { label: "Total SAC", value: money(sac), hint: `economia de ${money(p * n.n - sac)}` }], formula: `taxa mensal equivalente ${pct(im * 100, 3)}`, table, note: "Simulação sem seguros, taxas administrativas e correção monetária." };
+    },
+  },
+  roi: {
+    fields: [{ key: "i", label: "Investimento", placeholder: "5000", suffix: "R$" }, { key: "r", label: "Retorno obtido", placeholder: "12000", suffix: "R$" }],
+    compute: (_v, n) => bad(n.i, n.r) || n.i === 0 ? null : { rows: [{ label: "ROI", value: pct(((n.r - n.i) / n.i) * 100), big: true }, { label: "Lucro líquido", value: money(n.r - n.i) }, { label: "Múltiplo", value: `${fmt(n.r / n.i, 2)}×` }], formula: "(retorno − investimento) ÷ investimento" },
+  },
+  cagr: {
+    fields: [{ key: "a", label: "Valor inicial", placeholder: "100000" }, { key: "b", label: "Valor final", placeholder: "250000" }, { key: "t", label: "Anos", placeholder: "4" }],
+    compute: (_v, n) => bad(n.a, n.b, n.t) || n.a <= 0 || n.t <= 0 ? null : { rows: [{ label: "CAGR", value: pct((Math.pow(n.b / n.a, 1 / n.t) - 1) * 100), big: true }, { label: "Crescimento total", value: pct((n.b / n.a - 1) * 100) }], formula: "(final ÷ inicial)^(1/anos) − 1" },
+  },
+  inflacao: {
+    fields: [{ key: "v", label: "Valor", placeholder: "1000", suffix: "R$" }, { key: "i", label: "Inflação média anual", placeholder: "5", suffix: "%" }, { key: "t", label: "Anos", placeholder: "10" }],
+    compute: (_v, n) => { if (bad(n.v, n.i, n.t)) return null; const f = Math.pow(1 + n.i / 100, n.t); return { rows: [{ label: "Valor corrigido", value: money(n.v * f), big: true, hint: "quanto o valor passado equivale hoje" }, { label: "Poder de compra futuro", value: money(n.v / f), hint: "quanto o valor de hoje valerá" }, { label: "Inflação acumulada", value: pct((f - 1) * 100) }], formula: "valor × (1 + i)^anos" }; },
+  },
+  "independencia-financeira": {
+    fields: [{ key: "g", label: "Gasto mensal desejado", placeholder: "6000", suffix: "R$" }, { key: "w", label: "Taxa de retirada anual", placeholder: "4", suffix: "%", default: "4" }, { key: "p", label: "Patrimônio atual", placeholder: "50000", suffix: "R$", default: "0" }, { key: "a", label: "Aporte mensal", placeholder: "3000", suffix: "R$" }, { key: "r", label: "Rendimento real mensal", placeholder: "0,5", suffix: "%", default: "0.5" }],
+    compute: (_v, n) => { if (bad(n.g, n.w, n.a, n.r)) return null; const alvo = (n.g * 12) / (n.w / 100); const p0 = Number.isFinite(n.p) ? n.p : 0; const i = n.r / 100; let bal = p0, m = 0; while (bal < alvo && m < 1200) { bal = bal * (1 + i) + n.a; m++; } return { rows: [{ label: "Patrimônio necessário", value: money(alvo), big: true }, { label: "Tempo estimado", value: m >= 1200 ? "> 100 anos" : `${Math.floor(m / 12)} anos e ${m % 12} meses` }, { label: "Renda passiva mensal no alvo", value: money(n.g) }], formula: "alvo = gasto anual ÷ taxa de retirada", note: "Rendimento real = acima da inflação. Simulação simplificada, sem impostos." }; },
+  },
+  "valor-hora-freelancer": {
+    fields: [{ key: "r", label: "Renda líquida mensal desejada", placeholder: "10000", suffix: "R$" }, { key: "c", label: "Custos mensais (software, contador…)", placeholder: "1200", suffix: "R$", default: "0" }, { key: "t", label: "Impostos", placeholder: "15", suffix: "%", default: "15" }, { key: "h", label: "Horas faturáveis por semana", placeholder: "25" }, { key: "f", label: "Semanas de férias por ano", placeholder: "4", default: "4" }],
+    compute: (_v, n) => { if (bad(n.r, n.h) || n.h <= 0) return null; const c = Number.isFinite(n.c) ? n.c : 0, t = Number.isFinite(n.t) ? n.t : 0, f = Number.isFinite(n.f) ? n.f : 0; const anual = ((n.r + c) * 12) / (1 - t / 100); const horas = n.h * (52 - f); return { rows: [{ label: "Valor mínimo da hora", value: money(anual / horas), big: true }, { label: "Faturamento anual necessário", value: money(anual) }, { label: "Horas faturáveis por ano", value: fmt(horas, 0) }, { label: "Valor do dia (8 h)", value: money((anual / horas) * 8) }] }; },
+  },
+  "conversor-salario-hora": {
+    fields: [{ key: "s", label: "Salário mensal", placeholder: "4400", suffix: "R$" }, { key: "h", label: "Horas mensais", placeholder: "220", default: "220" }],
+    compute: (_v, n) => bad(n.s, n.h) || n.h <= 0 ? null : { rows: [{ label: "Por hora", value: money(n.s / n.h), big: true }, { label: "Por dia (8 h)", value: money((n.s / n.h) * 8) }, { label: "Por semana", value: money(n.s * 12 / 52) }, { label: "Por ano (12 salários)", value: money(n.s * 12) }] },
+  },
+  "hora-extra": {
+    fields: [{ key: "s", label: "Salário mensal", placeholder: "3300", suffix: "R$" }, { key: "h", label: "Horas extras", placeholder: "10" }, { key: "a", label: "Adicional", type: "select", default: "50", options: [{ value: "50", label: "50% (dias úteis)" }, { value: "100", label: "100% (domingos/feriados)" }] }, { key: "j", label: "Horas mensais", placeholder: "220", default: "220" }],
+    compute: (v, n) => { if (bad(n.s, n.h)) return null; const j = Number.isFinite(n.j) ? n.j : 220; const vh = n.s / j; const he = vh * (1 + parseFloat(v.a) / 100); return { rows: [{ label: "Total de horas extras", value: money(he * n.h), big: true }, { label: "Valor da hora normal", value: money(vh) }, { label: "Valor da hora extra", value: money(he) }] }; },
+  },
+  "decimo-terceiro": {
+    fields: [{ key: "s", label: "Salário bruto", placeholder: "3000", suffix: "R$" }, { key: "m", label: "Meses trabalhados no ano", placeholder: "12", default: "12" }],
+    compute: (_v, n) => bad(n.s, n.m) ? null : { rows: [{ label: "13º bruto", value: money((n.s / 12) * Math.min(12, n.m)), big: true }, { label: "1ª parcela (até 30/11)", value: money(((n.s / 12) * Math.min(12, n.m)) / 2) }], formula: "salário ÷ 12 × meses", note: "Valor bruto — INSS e IRRF incidem na segunda parcela." },
+  },
+  ferias: {
+    fields: [{ key: "s", label: "Salário bruto", placeholder: "3000", suffix: "R$" }, { key: "d", label: "Dias de férias", placeholder: "30", default: "30" }, { key: "v", label: "Vender 10 dias (abono)?", type: "select", default: "n", options: [{ value: "n", label: "Não" }, { value: "s", label: "Sim" }] }],
+    compute: (v, n) => { if (bad(n.s, n.d)) return null; const dias = v.v === "s" ? Math.min(n.d, 20) : n.d; const f = (n.s / 30) * dias; const terco = f / 3; const abono = v.v === "s" ? (n.s / 30) * 10 * (4 / 3) : 0; return { rows: [{ label: "Total bruto", value: money(f + terco + abono), big: true }, { label: "Férias", value: money(f) }, { label: "1/3 constitucional", value: money(terco) }, ...(abono ? [{ label: "Abono pecuniário", value: money(abono) }] : [])], note: "Valores brutos, sem descontos de INSS/IRRF." }; },
+  },
+  "calculadora-de-horas": {
+    fields: [{ key: "e", label: "Entrada", placeholder: "08:00", type: "text" }, { key: "s", label: "Saída", placeholder: "17:30", type: "text" }, { key: "i", label: "Intervalo", placeholder: "60", suffix: "min", default: "60" }],
+    compute: (v, n) => { const p = (s: string) => { const m = s.match(/^(\d{1,2})[:h](\d{2})$/); return m ? +m[1] * 60 + +m[2] : NaN; }; const a = p(v.e), b = p(v.s); if (bad(a, b)) return null; let d = b - a; if (d < 0) d += 1440; d -= Number.isFinite(n.i) ? n.i : 0; if (d < 0) return { error: "O intervalo é maior que a jornada." }; return { rows: [{ label: "Horas trabalhadas", value: `${Math.floor(d / 60)}h${String(d % 60).padStart(2, "0")}`, big: true }, { label: "Em decimal", value: fmt(d / 60, 2) + " h" }, { label: "Em minutos", value: fmt(d, 0) }] }; },
+  },
+  "alcool-ou-gasolina": {
+    fields: [{ key: "e", label: "Preço do etanol", placeholder: "3,89", suffix: "R$/L" }, { key: "g", label: "Preço da gasolina", placeholder: "5,79", suffix: "R$/L" }, { key: "ce", label: "Consumo com etanol (opcional)", placeholder: "8,5", suffix: "km/L" }, { key: "cg", label: "Consumo com gasolina (opcional)", placeholder: "12", suffix: "km/L" }],
+    compute: (_v, n) => { if (bad(n.e, n.g) || n.g <= 0) return null; const ratio = n.e / n.g; const real = Number.isFinite(n.ce) && Number.isFinite(n.cg) && n.ce > 0 && n.cg > 0; const ce = real ? n.e / n.ce : NaN, cg = real ? n.g / n.cg : NaN; const win = real ? (ce < cg ? "Etanol" : "Gasolina") : ratio <= 0.7 ? "Etanol" : "Gasolina"; return { rows: [{ label: "Compensa abastecer com", value: win, big: true }, { label: "Relação etanol/gasolina", value: pct(ratio * 100, 1), hint: real ? "usando o consumo real" : "regra dos 70%" }, ...(real ? [{ label: "Custo/km etanol", value: money(ce) }, { label: "Custo/km gasolina", value: money(cg) }] : [])] }; },
+  },
+  "consumo-combustivel": {
+    fields: [{ key: "km", label: "Quilômetros rodados", placeholder: "420", suffix: "km" }, { key: "l", label: "Litros abastecidos", placeholder: "35", suffix: "L" }, { key: "p", label: "Preço do litro", placeholder: "5,80", suffix: "R$" }, { key: "d", label: "Distância da viagem (opcional)", placeholder: "600", suffix: "km" }],
+    compute: (_v, n) => { if (bad(n.km, n.l) || n.l <= 0) return null; const c = n.km / n.l; const rows = [{ label: "Consumo", value: `${fmt(c, 2)} km/L`, big: true }]; if (Number.isFinite(n.p)) rows.push({ label: "Custo por km", value: money(n.p / c), big: false }); if (Number.isFinite(n.p) && Number.isFinite(n.d)) rows.push({ label: "Custo da viagem", value: money((n.d / c) * n.p), big: false }, { label: "Litros necessários", value: `${fmt(n.d / c, 1)} L`, big: false }); return { rows }; },
+  },
+  "custo-por-km": {
+    fields: [{ key: "f", label: "Custos fixos anuais (IPVA, seguro, manutenção, depreciação)", placeholder: "12000", suffix: "R$" }, { key: "k", label: "Km rodados por ano", placeholder: "15000", suffix: "km" }, { key: "c", label: "Consumo", placeholder: "12", suffix: "km/L" }, { key: "p", label: "Preço do combustível", placeholder: "5,80", suffix: "R$/L" }],
+    compute: (_v, n) => { if (bad(n.f, n.k, n.c, n.p) || n.k <= 0 || n.c <= 0) return null; const fix = n.f / n.k, comb = n.p / n.c; return { rows: [{ label: "Custo total por km", value: money(fix + comb), big: true }, { label: "Só combustível", value: money(comb) }, { label: "Só custos fixos", value: money(fix) }, { label: "Custo mensal total", value: money(((fix + comb) * n.k) / 12) }] }; },
+  },
+  /* -------------------------------- Datas -------------------------------- */
+  "calculadora-de-idade": {
+    fields: [{ key: "n", label: "Data de nascimento", type: "date" }, { key: "r", label: "Data de referência", type: "date", default: today() }],
+    compute: (v) => { const a = toDate(v.n), b = toDate(v.r); if (!a || !b) return null; if (b < a) return { error: "A data de referência é anterior ao nascimento." }; const { y, m, d } = ymd(a, b); const days = Math.floor((+b - +a) / DAY); const next = new Date(b.getFullYear(), a.getMonth(), a.getDate()); if (next < b) next.setFullYear(next.getFullYear() + 1); return { rows: [{ label: "Idade", value: `${y} anos`, hint: `${m} meses e ${d} dias`, big: true }, { label: "Dias vividos", value: fmt(days, 0) }, { label: "Próximo aniversário", value: `em ${Math.round((+next - +b) / DAY)} dias`, hint: `${WD[next.getDay()]}, ${formatDate(next.toISOString())}` }, { label: "Nasceu em", value: WD[a.getDay()] }] }; },
+  },
+  "diferenca-entre-datas": {
+    fields: [{ key: "a", label: "Data inicial", type: "date" }, { key: "b", label: "Data final", type: "date", default: today() }, { key: "inc", label: "Incluir o último dia?", type: "select", default: "n", options: [{ value: "n", label: "Não" }, { value: "s", label: "Sim" }] }],
+    compute: (v) => { const a = toDate(v.a), b = toDate(v.b); if (!a || !b) return null; const [s, e] = a <= b ? [a, b] : [b, a]; const days = Math.round((+e - +s) / DAY) + (v.inc === "s" ? 1 : 0); const { y, m, d } = ymd(s, e); return { rows: [{ label: "Dias", value: fmt(days, 0), big: true }, { label: "Semanas", value: `${Math.floor(days / 7)} sem e ${days % 7} d` }, { label: "Anos, meses e dias", value: `${y}a ${m}m ${d}d` }, { label: "Dias úteis (seg–sex)", value: fmt(businessDays(s, e) + (v.inc === "s" && e.getDay() % 6 !== 0 ? 1 : 0), 0) }, { label: "Horas", value: fmt(days * 24, 0) }] }; },
+  },
+  "somar-dias": {
+    fields: [{ key: "d", label: "Data base", type: "date", default: today() }, { key: "op", label: "Operação", type: "select", default: "+", options: [{ value: "+", label: "Somar" }, { value: "-", label: "Subtrair" }] }, { key: "n", label: "Quantidade", placeholder: "45" }, { key: "u", label: "Unidade", type: "select", default: "d", options: [{ value: "d", label: "dias" }, { value: "w", label: "semanas" }, { value: "m", label: "meses" }, { value: "y", label: "anos" }] }],
+    compute: (v, n) => { const d = toDate(v.d); if (!d || bad(n.n)) return null; const k = (v.op === "-" ? -1 : 1) * n.n; const r = new Date(d); if (v.u === "d") r.setDate(r.getDate() + k); if (v.u === "w") r.setDate(r.getDate() + k * 7); if (v.u === "m") r.setMonth(r.getMonth() + k); if (v.u === "y") r.setFullYear(r.getFullYear() + k); return { rows: [{ label: "Resultado", value: formatDate(r.toISOString(), { day: "2-digit", month: "long", year: "numeric" }), hint: WD[r.getDay()], big: true }, { label: "Diferença em dias", value: fmt(Math.round((+r - +d) / DAY), 0) }] }; },
+  },
+  "dias-uteis": {
+    fields: [{ key: "mode", label: "Modo", type: "select", default: "c", options: [{ value: "c", label: "Contar dias úteis entre datas" }, { value: "s", label: "Somar dias úteis a uma data" }] }, { key: "a", label: "Data inicial", type: "date", default: today() }, { key: "b", label: "Data final (modo contar)", type: "date" }, { key: "n", label: "Dias úteis a somar (modo somar)", placeholder: "10" }],
+    compute: (v, n) => { const a = toDate(v.a); if (!a) return null; if (v.mode === "c") { const b = toDate(v.b); if (!b) return null; const [s, e] = a <= b ? [a, b] : [b, a]; const bd = businessDays(s, e); const tot = Math.round((+e - +s) / DAY); return { rows: [{ label: "Dias úteis", value: fmt(bd, 0), big: true }, { label: "Dias corridos", value: fmt(tot, 0) }, { label: "Fins de semana", value: fmt(tot - bd, 0) }], note: "Feriados não são descontados automaticamente." }; } if (bad(n.n)) return null; const r = new Date(a); let c = 0; while (c < n.n) { r.setDate(r.getDate() + 1); if (r.getDay() % 6 !== 0) c++; } return { rows: [{ label: "Data resultante", value: formatDate(r.toISOString(), { day: "2-digit", month: "long", year: "numeric" }), hint: WD[r.getDay()], big: true }] }; },
+  },
+  "dia-da-semana": {
+    fields: [{ key: "d", label: "Data", type: "date" }],
+    compute: (v) => { const d = toDate(v.d); if (!d) return null; const start = new Date(d.getFullYear(), 0, 1); const doy = Math.floor((+d - +start) / DAY) + 1; const tmp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); const dayNum = tmp.getUTCDay() || 7; tmp.setUTCDate(tmp.getUTCDate() + 4 - dayNum); const week = Math.ceil(((+tmp - +Date.UTC(tmp.getUTCFullYear(), 0, 1)) / DAY + 1) / 7); const leap = (d.getFullYear() % 4 === 0 && d.getFullYear() % 100 !== 0) || d.getFullYear() % 400 === 0; return { rows: [{ label: "Dia da semana", value: WD[d.getDay()], big: true }, { label: "Semana ISO", value: String(week) }, { label: "Dia do ano", value: `${doy} de ${leap ? 366 : 365}` }, { label: "Trimestre", value: `${Math.floor(d.getMonth() / 3) + 1}º` }] }; },
+  },
+  "calculadora-de-gestacao": {
+    fields: [{ key: "dum", label: "Primeiro dia da última menstruação", type: "date" }, { key: "c", label: "Duração do ciclo", placeholder: "28", suffix: "dias", default: "28" }],
+    compute: (v, n) => { const d = toDate(v.dum); if (!d) return null; const adj = (Number.isFinite(n.c) ? n.c : 28) - 28; const dpp = new Date(d); dpp.setDate(dpp.getDate() + 280 + adj); const now = new Date(); const days = Math.floor((+now - +d) / DAY) - adj; const w = Math.floor(days / 7); const tri = w < 13 ? "1º" : w < 27 ? "2º" : "3º"; return { rows: [{ label: "Data provável do parto", value: formatDate(dpp.toISOString(), { day: "2-digit", month: "long", year: "numeric" }), big: true }, { label: "Idade gestacional hoje", value: days >= 0 && days <= 300 ? `${w} semanas e ${days % 7} dias` : "—", hint: days >= 0 && days <= 300 ? `${tri} trimestre` : undefined }, { label: "Dias até o parto", value: fmt(Math.round((+dpp - +now) / DAY), 0) }], formula: "Regra de Naegele: DUM + 280 dias (ajustada pelo ciclo)", note: "Estimativa. O ultrassom pode redefinir a data." }; },
+  },
+};
 
-/* ------------------------------ Porcentagem ------------------------------- */
-const P_DEF = { mode: "of", a: "15", b: "240" };
-export function Porcentagem({ meta }: ToolProps) {
-  const { v, set, reset, apply } = useFields(P_DEF);
-  const a = parseNum(v.a);
-  const b = parseNum(v.b);
-  const invalid = Number.isNaN(a) || Number.isNaN(b);
-  let result = NaN;
-  let label = "";
-  let explain = "";
-  if (!invalid) {
-    if (v.mode === "of") {
-      result = (a / 100) * b;
-      label = `${num(a)}% de ${num(b)}`;
-      explain = `${num(b)} × ${num(a)} ÷ 100 = ${num(result)}`;
-    } else if (v.mode === "is") {
-      result = b === 0 ? NaN : (a / b) * 100;
-      label = `${num(a)} é quanto % de ${num(b)}`;
-      explain = `${num(a)} ÷ ${num(b)} × 100 = ${pct(result)}`;
-    } else {
-      result = a === 0 ? NaN : ((b - a) / a) * 100;
-      label = `Variação de ${num(a)} para ${num(b)}`;
-      explain = `(${num(b)} − ${num(a)}) ÷ ${num(a)} × 100 = ${pct(result)}`;
-    }
-  }
-  const out = v.mode === "of" ? num(result) : pct(result);
+/* ------------------------------ Custom tools ------------------------------- */
+export function MediaPonderada() {
+  const [rows, setRows] = useState([{ v: "", p: "1" }, { v: "", p: "1" }, { v: "", p: "1" }]);
+  const res = useMemo(() => { let s = 0, w = 0; rows.forEach((r) => { const v = parseNum(r.v), p = parseNum(r.p); if (Number.isFinite(v) && Number.isFinite(p)) { s += v * p; w += p; } }); return w > 0 ? { media: s / w, pesos: w, soma: s } : null; }, [rows]);
   return (
-    <ToolShell meta={meta} examples={[{ label: "15% de 240", onClick: () => apply({ mode: "of", a: "15", b: "240" }) }, { label: "45 é quanto % de 250", onClick: () => apply({ mode: "is", a: "45", b: "250" }) }, { label: "De 80 para 100", onClick: () => apply({ mode: "change", a: "80", b: "100" }) }]}>
-      <Segmented value={v.mode} onChange={(m) => set("mode", m)} options={[{ value: "of", label: "X% de Y" }, { value: "is", label: "X é quanto % de Y" }, { value: "change", label: "Variação de X para Y" }]} />
-      <ToolGrid className="mt-5">
-        <Field label={v.mode === "of" ? "Porcentagem (X)" : "Valor X"}>
-          <Input inputMode="decimal" value={v.a} onChange={(e) => set("a", e.target.value)} suffix={v.mode === "of" ? "%" : undefined} />
-        </Field>
-        <Field label="Valor Y">
-          <Input inputMode="decimal" value={v.b} onChange={(e) => set("b", e.target.value)} />
-        </Field>
-      </ToolGrid>
-      <ErrorText>{invalid && "Informe dois números válidos."}</ErrorText>
-      {!invalid && (
-        <ResultPanel>
-          <BigNumber label={label} value={Number.isNaN(result) ? "—" : out} accent sub={explain} />
-          <Actions copy={out} onClear={reset} />
-        </ResultPanel>
-      )}
-    </ToolShell>
-  );
-}
-
-/* -------------------------------- Desconto -------------------------------- */
-const D_DEF = { price: "199", d1: "30", d2: "" };
-export function Desconto({ meta }: ToolProps) {
-  const { v, set, reset, apply } = useFields(D_DEF);
-  const price = parseNum(v.price);
-  const d1 = parseNum(v.d1);
-  const d2 = v.d2 ? parseNum(v.d2) : 0;
-  const invalid = Number.isNaN(price) || Number.isNaN(d1) || Number.isNaN(d2);
-  const after1 = price * (1 - d1 / 100);
-  const final = after1 * (1 - d2 / 100);
-  const real = price ? (1 - final / price) * 100 : 0;
-  return (
-    <ToolShell meta={meta} examples={[{ label: "R$ 199 com 30%", onClick: () => apply({ price: "199", d1: "30", d2: "" }) }, { label: "20% + 10% acumulados", onClick: () => apply({ price: "100", d1: "20", d2: "10" }) }]}>
-      <ToolGrid cols={3}>
-        <Field label="Preço original">
-          <Input inputMode="decimal" prefix="R$" value={v.price} onChange={(e) => set("price", e.target.value)} />
-        </Field>
-        <Field label="Desconto">
-          <Input inputMode="decimal" suffix="%" value={v.d1} onChange={(e) => set("d1", e.target.value)} />
-        </Field>
-        <Field label="2º desconto (opcional)" hint="Cupom sobre o valor já reduzido">
-          <Input inputMode="decimal" suffix="%" value={v.d2} onChange={(e) => set("d2", e.target.value)} placeholder="0" />
-        </Field>
-      </ToolGrid>
-      <ErrorText>{invalid && "Verifique os valores informados."}</ErrorText>
-      {!invalid && (
-        <ResultPanel>
-          <div className="grid gap-6 sm:grid-cols-2">
-            <BigNumber label="Preço final" value={cur(final)} accent />
-            <BigNumber label="Você economiza" value={cur(price - final)} sub={`Desconto real: ${pct(real)}`} />
-          </div>
-          <Bar value={real} className="mt-4" />
-          <Actions copy={`Preço final: ${cur(final)} (economia ${cur(price - final)}, desconto real ${pct(real)})`} onClear={reset} />
-        </ResultPanel>
-      )}
-    </ToolShell>
-  );
-}
-
-/* ------------------------------ Juros simples ----------------------------- */
-const JS_DEF = { c: "1000", i: "2", t: "12", unit: "m" };
-export function JurosSimples({ meta }: ToolProps) {
-  const { v, set, reset, apply } = useFields(JS_DEF);
-  const c = parseNum(v.c), i = parseNum(v.i), t = parseNum(v.t);
-  const invalid = [c, i, t].some(Number.isNaN) || t < 0;
-  const j = c * (i / 100) * t;
-  return (
-    <ToolShell meta={meta} examples={[{ label: "R$ 1.000 a 2% a.m. por 12 meses", onClick: () => apply(JS_DEF) }, { label: "R$ 5.000 a 8% a.a. por 3 anos", onClick: () => apply({ c: "5000", i: "8", t: "3", unit: "a" }) }]}>
-      <ToolGrid cols={4}>
-        <Field label="Capital"><Input inputMode="decimal" prefix="R$" value={v.c} onChange={(e) => set("c", e.target.value)} /></Field>
-        <Field label="Taxa"><Input inputMode="decimal" suffix={v.unit === "m" ? "% a.m." : "% a.a."} value={v.i} onChange={(e) => set("i", e.target.value)} /></Field>
-        <Field label="Prazo"><Input inputMode="decimal" suffix={v.unit === "m" ? "meses" : "anos"} value={v.t} onChange={(e) => set("t", e.target.value)} /></Field>
-        <Field label="Unidade"><Select value={v.unit} onChange={(e) => set("unit", e.target.value)}><option value="m">Mensal</option><option value="a">Anual</option></Select></Field>
-      </ToolGrid>
-      <ErrorText>{invalid && "Informe valores numéricos válidos."}</ErrorText>
-      {!invalid && (
-        <ResultPanel>
-          <div className="grid gap-6 sm:grid-cols-2">
-            <BigNumber label="Juros" value={cur(j)} accent />
-            <BigNumber label="Montante" value={cur(c + j)} sub={`J = ${num(c)} × ${num(i)}% × ${num(t)}`} />
-          </div>
-          <Actions copy={`Juros: ${cur(j)} · Montante: ${cur(c + j)}`} onClear={reset} />
-        </ResultPanel>
-      )}
-    </ToolShell>
-  );
-}
-
-/* ----------------------------- Juros compostos ---------------------------- */
-const JC_DEF = { c: "10000", i: "1", t: "24", a: "0", unitI: "m", unitT: "m" };
-export function JurosCompostos({ meta }: ToolProps) {
-  const { v, set, reset, apply } = useFields(JC_DEF);
-  const c = parseNum(v.c), iRaw = parseNum(v.i), tRaw = parseNum(v.t), a = parseNum(v.a || "0");
-  const invalid = [c, iRaw, tRaw, a].some(Number.isNaN) || tRaw <= 0;
-  const i = v.unitI === "a" ? Math.pow(1 + iRaw / 100, 1 / 12) - 1 : iRaw / 100;
-  const n = Math.round(v.unitT === "a" ? tRaw * 12 : tRaw);
-  const rows = useMemo(() => {
-    if (invalid) return [];
-    const r: { m: number; juros: number; aportado: number; saldo: number }[] = [];
-    let saldo = c, aportado = c;
-    for (let m = 1; m <= Math.min(n, 1200); m++) {
-      const juros = saldo * i;
-      saldo += juros + a;
-      aportado += a;
-      r.push({ m, juros, aportado, saldo });
-    }
-    return r;
-  }, [c, i, n, a, invalid]);
-  const last = rows[rows.length - 1];
-  const totalInvested = last?.aportado ?? c;
-  const totalInterest = (last?.saldo ?? c) - totalInvested;
-  const [showAll, setShowAll] = useState(false);
-  return (
-    <ToolShell meta={meta} examples={[{ label: "R$ 10 mil a 1% a.m. por 24 meses", onClick: () => apply(JC_DEF) }, { label: "R$ 500/mês a 0,8% por 10 anos", onClick: () => apply({ c: "0", i: "0.8", t: "10", a: "500", unitI: "m", unitT: "a" }) }, { label: "12% a.a. por 5 anos", onClick: () => apply({ c: "20000", i: "12", t: "5", a: "0", unitI: "a", unitT: "a" }) }]}>
-      <ToolGrid cols={4}>
-        <Field label="Capital inicial"><Input inputMode="decimal" prefix="R$" value={v.c} onChange={(e) => set("c", e.target.value)} /></Field>
-        <Field label="Aporte mensal"><Input inputMode="decimal" prefix="R$" value={v.a} onChange={(e) => set("a", e.target.value)} /></Field>
-        <Field label="Taxa de juros">
-          <div className="flex">
-            <Input inputMode="decimal" value={v.i} onChange={(e) => set("i", e.target.value)} className="border-r-0" />
-            <Select value={v.unitI} onChange={(e) => set("unitI", e.target.value)} className="w-24"><option value="m">% a.m.</option><option value="a">% a.a.</option></Select>
-          </div>
-        </Field>
-        <Field label="Prazo">
-          <div className="flex">
-            <Input inputMode="decimal" value={v.t} onChange={(e) => set("t", e.target.value)} className="border-r-0" />
-            <Select value={v.unitT} onChange={(e) => set("unitT", e.target.value)} className="w-24"><option value="m">meses</option><option value="a">anos</option></Select>
-          </div>
-        </Field>
-      </ToolGrid>
-      <ErrorText>{invalid && "Informe valores válidos (prazo maior que zero)."}</ErrorText>
-      {!invalid && last && (
-        <ResultPanel>
-          <div className="grid gap-6 sm:grid-cols-3">
-            <BigNumber label="Montante final" value={cur(last.saldo)} accent />
-            <BigNumber label="Total investido" value={cur(totalInvested)} />
-            <BigNumber label="Juros ganhos" value={cur(totalInterest)} sub={`${pct((totalInterest / Math.max(totalInvested, 1)) * 100, 1)} sobre o investido`} />
-          </div>
-          <div className="mt-5">
-            <div className="mb-1 flex justify-between text-xs text-muted"><span>Investido</span><span>Juros</span></div>
-            <div className="flex h-2 w-full overflow-hidden bg-[var(--line)]">
-              <div className="bg-fg transition-all duration-500" style={{ width: `${(totalInvested / last.saldo) * 100}%` }} />
-              <div className="bg-accent transition-all duration-500" style={{ width: `${(totalInterest / last.saldo) * 100}%` }} />
-            </div>
-            <div className="mt-1 text-xs text-subtle">Taxa mensal equivalente: {pct(i * 100, 4)} · {n} meses</div>
-          </div>
-          <div className="mt-6 overflow-x-auto">
-            <table className="w-full text-sm tabular">
-              <thead><tr className="border-b border-strong text-left text-xs uppercase tracking-wider text-muted"><th className="py-2 pr-3 font-medium">Mês</th><th className="py-2 pr-3 font-medium">Juros</th><th className="py-2 pr-3 font-medium">Aportado</th><th className="py-2 font-medium">Saldo</th></tr></thead>
-              <tbody className="divide-y divide-[var(--line)]">
-                {(showAll ? rows : rows.filter((r, idx) => idx < 6 || idx === rows.length - 1 || r.m % 12 === 0)).map((r) => (
-                  <tr key={r.m}><td className="py-1.5 pr-3 text-muted">{r.m}</td><td className="py-1.5 pr-3">{cur(r.juros)}</td><td className="py-1.5 pr-3">{cur(r.aportado)}</td><td className="py-1.5 font-medium">{cur(r.saldo)}</td></tr>
-                ))}
-              </tbody>
-            </table>
-            {rows.length > 8 && <button onClick={() => setShowAll((s) => !s)} className="mt-3 text-xs font-medium underline underline-offset-2">{showAll ? "Mostrar resumo" : `Mostrar todos os ${rows.length} meses`}</button>}
-          </div>
-          <Actions copy={`Montante: ${cur(last.saldo)} · Investido: ${cur(totalInvested)} · Juros: ${cur(totalInterest)}`} onClear={reset} />
-        </ResultPanel>
-      )}
-    </ToolShell>
-  );
-}
-
-/* ------------------------------ Regra de três ----------------------------- */
-const R3_DEF = { a: "3", b: "12", c: "7", inverse: false };
-export function RegraDeTres({ meta }: ToolProps) {
-  const { v, set, reset, apply } = useFields(R3_DEF);
-  const a = parseNum(v.a), b = parseNum(v.b), c = parseNum(v.c);
-  const invalid = [a, b, c].some(Number.isNaN);
-  const x = v.inverse ? (a * b) / c : (b * c) / a;
-  return (
-    <ToolShell meta={meta} examples={[{ label: "3 canetas = R$ 12; 7 canetas = ?", onClick: () => apply(R3_DEF) }, { label: "4 pedreiros, 10 dias; 8 pedreiros = ? (inversa)", onClick: () => apply({ a: "4", b: "10", c: "8", inverse: true }) }]}>
-      <div className="grid items-center gap-4 sm:grid-cols-[1fr_auto_1fr]">
-        <Field label="A"><Input inputMode="decimal" value={v.a} onChange={(e) => set("a", e.target.value)} /></Field>
-        <span className="hidden pt-5 text-center font-display text-xl text-subtle sm:block">está para</span>
-        <Field label="B"><Input inputMode="decimal" value={v.b} onChange={(e) => set("b", e.target.value)} /></Field>
-        <Field label="C"><Input inputMode="decimal" value={v.c} onChange={(e) => set("c", e.target.value)} /></Field>
-        <span className="hidden pt-5 text-center font-display text-xl text-subtle sm:block">assim como</span>
-        <Field label="X (?)"><Input readOnly value={invalid || !Number.isFinite(x) ? "" : num(x, 4)} className="border-accent font-semibold" /></Field>
-      </div>
-      <div className="mt-4 max-w-xs"><Toggle checked={v.inverse} onChange={(b) => set("inverse", b)} label="Proporção inversa" /></div>
-      <ErrorText>{invalid && "Informe A, B e C."}</ErrorText>
-      {!invalid && Number.isFinite(x) && (
-        <ResultPanel>
-          <BigNumber value={num(x, 4)} accent sub={v.inverse ? `X = (A × B) ÷ C = (${num(a)} × ${num(b)}) ÷ ${num(c)}` : `X = (B × C) ÷ A = (${num(b)} × ${num(c)}) ÷ ${num(a)}`} />
-          <Actions copy={num(x, 4)} onClear={reset} />
-        </ResultPanel>
-      )}
-    </ToolShell>
-  );
-}
-
-/* ----------------------------------- IMC ---------------------------------- */
-const IMC_DEF = { w: "70", h: "175" };
-export function IMC({ meta }: ToolProps) {
-  const { v, set, reset, apply } = useFields(IMC_DEF);
-  const w = parseNum(v.w);
-  let h = parseNum(v.h);
-  if (h > 3) h = h / 100;
-  const invalid = Number.isNaN(w) || Number.isNaN(h) || h <= 0 || w <= 0;
-  const imc = w / (h * h);
-  const cls = imc < 18.5 ? ["Abaixo do peso", "amber"] : imc < 25 ? ["Peso normal", "mint"] : imc < 30 ? ["Sobrepeso", "amber"] : imc < 35 ? ["Obesidade grau I", "red"] : imc < 40 ? ["Obesidade grau II", "red"] : ["Obesidade grau III", "red"];
-  return (
-    <ToolShell meta={meta} examples={[{ label: "70 kg, 1,75 m", onClick: () => apply(IMC_DEF) }, { label: "95 kg, 1,70 m", onClick: () => apply({ w: "95", h: "170" }) }]}>
-      <ToolGrid>
-        <Field label="Peso"><Input inputMode="decimal" suffix="kg" value={v.w} onChange={(e) => set("w", e.target.value)} /></Field>
-        <Field label="Altura" hint="Em cm (175) ou metros (1,75)"><Input inputMode="decimal" suffix="cm/m" value={v.h} onChange={(e) => set("h", e.target.value)} /></Field>
-      </ToolGrid>
-      <ErrorText>{invalid && "Informe peso e altura válidos."}</ErrorText>
-      {!invalid && (
-        <ResultPanel>
-          <div className="grid gap-6 sm:grid-cols-2">
-            <BigNumber label="IMC" value={num(imc, 1)} accent sub={cls[0]} />
-            <BigNumber label="Faixa saudável para sua altura" value={`${num(18.5 * h * h, 1)} – ${num(24.9 * h * h, 1)} kg`} />
-          </div>
-          <div className="mt-5 flex h-2 w-full overflow-hidden">
-            <div className="w-[18.5%] bg-amber/60" /><div className="w-[26%] bg-mint" /><div className="w-[20%] bg-amber" /><div className="flex-1 bg-red-600" />
-          </div>
-          <div className="relative mt-1 h-3"><span className="absolute -translate-x-1/2 text-[10px] font-mono" style={{ left: `${Math.min(100, Math.max(0, (imc / 50) * 100))}%` }}>▲</span></div>
-          <Actions copy={`IMC ${num(imc, 1)} — ${cls[0]}`} onClear={reset} />
-        </ResultPanel>
-      )}
-    </ToolShell>
-  );
-}
-
-/* ----------------------------- Dividir conta ------------------------------ */
-const DC_DEF = { total: "240", people: "4", tip: "10", round: true };
-export function DividirConta({ meta }: ToolProps) {
-  const { v, set, reset, apply } = useFields(DC_DEF);
-  const total = parseNum(v.total), people = parseNum(v.people), tip = parseNum(v.tip || "0");
-  const invalid = [total, people, tip].some(Number.isNaN) || people < 1;
-  const withTip = total * (1 + tip / 100);
-  const each = withTip / Math.floor(people);
-  const shown = v.round ? Math.ceil(each) : each;
-  return (
-    <ToolShell meta={meta} examples={[{ label: "R$ 240 + 10% para 4", onClick: () => apply(DC_DEF) }, { label: "R$ 89,90 + 12% para 3", onClick: () => apply({ total: "89,90", people: "3", tip: "12", round: false }) }]}>
-      <ToolGrid cols={3}>
-        <Field label="Valor da conta"><Input inputMode="decimal" prefix="R$" value={v.total} onChange={(e) => set("total", e.target.value)} /></Field>
-        <Field label="Pessoas"><Input inputMode="numeric" value={v.people} onChange={(e) => set("people", e.target.value)} /></Field>
-        <Field label="Serviço / gorjeta"><Input inputMode="decimal" suffix="%" value={v.tip} onChange={(e) => set("tip", e.target.value)} /></Field>
-      </ToolGrid>
-      <div className="mt-3 flex flex-wrap gap-2">{[0, 10, 12, 15, 20].map((t) => <button key={t} onClick={() => set("tip", String(t))} className={`border px-2.5 py-1 text-xs ${String(t) === v.tip ? "border-fg bg-fg text-bg" : "border-line hover:border-strong"}`}>{t}%</button>)}</div>
-      <div className="mt-3 max-w-xs"><Toggle checked={v.round} onChange={(b) => set("round", b)} label="Arredondar para cima" /></div>
-      <ErrorText>{invalid && "Informe conta e número de pessoas (mínimo 1)."}</ErrorText>
-      {!invalid && (
-        <ResultPanel>
-          <div className="grid gap-6 sm:grid-cols-3">
-            <BigNumber label="Por pessoa" value={cur(shown)} accent />
-            <BigNumber label="Total com serviço" value={cur(withTip)} />
-            <BigNumber label="Serviço" value={cur(withTip - total)} />
-          </div>
-          <Actions copy={`${cur(shown)} por pessoa (${Math.floor(people)} pessoas, total ${cur(withTip)})`} onClear={reset} />
-        </ResultPanel>
-      )}
-    </ToolShell>
-  );
-}
-
-/* ----------------------------- Margem de lucro ---------------------------- */
-const ML_DEF = { mode: "fromPrice", cost: "40", price: "100", margin: "40" };
-export function MargemDeLucro({ meta }: ToolProps) {
-  const { v, set, reset, apply } = useFields(ML_DEF);
-  const cost = parseNum(v.cost);
-  const price = v.mode === "fromPrice" ? parseNum(v.price) : cost / (1 - parseNum(v.margin) / 100);
-  const invalid = Number.isNaN(cost) || Number.isNaN(price) || cost <= 0 || price <= 0 || (v.mode === "fromMargin" && parseNum(v.margin) >= 100);
-  const profit = price - cost;
-  const margin = (profit / price) * 100;
-  const markup = (profit / cost) * 100;
-  return (
-    <ToolShell meta={meta} examples={[{ label: "Custo 40, preço 100", onClick: () => apply({ mode: "fromPrice", cost: "40", price: "100", margin: "40" }) }, { label: "Custo 25 com margem 40%", onClick: () => apply({ mode: "fromMargin", cost: "25", price: "", margin: "40" }) }]}>
-      <Segmented value={v.mode} onChange={(m) => set("mode", m)} options={[{ value: "fromPrice", label: "Tenho custo e preço" }, { value: "fromMargin", label: "Quero definir a margem" }]} />
-      <ToolGrid className="mt-5">
-        <Field label="Custo"><Input inputMode="decimal" prefix="R$" value={v.cost} onChange={(e) => set("cost", e.target.value)} /></Field>
-        {v.mode === "fromPrice" ? <Field label="Preço de venda"><Input inputMode="decimal" prefix="R$" value={v.price} onChange={(e) => set("price", e.target.value)} /></Field> : <Field label="Margem desejada"><Input inputMode="decimal" suffix="%" value={v.margin} onChange={(e) => set("margin", e.target.value)} /></Field>}
-      </ToolGrid>
-      <ErrorText>{invalid && "Verifique os valores (margem deve ser menor que 100%)."}</ErrorText>
-      {!invalid && (
-        <ResultPanel>
-          <div className="grid gap-6 sm:grid-cols-3">
-            <BigNumber label={v.mode === "fromMargin" ? "Preço de venda" : "Lucro por unidade"} value={cur(v.mode === "fromMargin" ? price : profit)} accent />
-            <BigNumber label="Margem (sobre venda)" value={pct(margin, 1)} />
-            <BigNumber label="Markup (sobre custo)" value={pct(markup, 1)} />
-          </div>
-          <Actions copy={`Preço ${cur(price)} · Lucro ${cur(profit)} · Margem ${pct(margin, 1)} · Markup ${pct(markup, 1)}`} onClear={reset} />
-        </ResultPanel>
-      )}
-    </ToolShell>
-  );
-}
-
-/* ------------------------------ Parcelamento ------------------------------ */
-const PAR_DEF = { p: "3000", i: "2.5", n: "12" };
-export function Parcelamento({ meta }: ToolProps) {
-  const { v, set, reset, apply } = useFields(PAR_DEF);
-  const p = parseNum(v.p), i = parseNum(v.i) / 100, n = Math.round(parseNum(v.n));
-  const invalid = [p, i, n].some(Number.isNaN) || p <= 0 || n < 1;
-  const pmt = i === 0 ? p / n : (p * i) / (1 - Math.pow(1 + i, -n));
-  const schedule = useMemo(() => {
-    if (invalid) return [];
-    let bal = p;
-    return Array.from({ length: Math.min(n, 600) }, (_, k) => {
-      const juros = bal * i;
-      const amort = pmt - juros;
-      bal -= amort;
-      return { k: k + 1, juros, amort, bal: Math.max(0, bal) };
-    });
-  }, [p, i, n, pmt, invalid]);
-  const [full, setFull] = useState(false);
-  return (
-    <ToolShell meta={meta} examples={[{ label: "R$ 3.000 em 12× a 2,5%", onClick: () => apply(PAR_DEF) }, { label: "R$ 50.000 em 48× a 1,2%", onClick: () => apply({ p: "50000", i: "1.2", n: "48" }) }]}>
-      <ToolGrid cols={3}>
-        <Field label="Valor financiado"><Input inputMode="decimal" prefix="R$" value={v.p} onChange={(e) => set("p", e.target.value)} /></Field>
-        <Field label="Taxa mensal"><Input inputMode="decimal" suffix="% a.m." value={v.i} onChange={(e) => set("i", e.target.value)} /></Field>
-        <Field label="Parcelas"><Input inputMode="numeric" value={v.n} onChange={(e) => set("n", e.target.value)} /></Field>
-      </ToolGrid>
-      <ErrorText>{invalid && "Informe valor, taxa e número de parcelas."}</ErrorText>
-      {!invalid && (
-        <ResultPanel>
-          <div className="grid gap-6 sm:grid-cols-3">
-            <BigNumber label="Parcela mensal" value={cur(pmt)} accent />
-            <BigNumber label="Total pago" value={cur(pmt * n)} />
-            <BigNumber label="Juros totais" value={cur(pmt * n - p)} sub={`${pct(((pmt * n) / p - 1) * 100, 1)} sobre o valor`} />
-          </div>
-          <div className="mt-6 overflow-x-auto">
-            <table className="w-full text-sm tabular">
-              <thead><tr className="border-b border-strong text-left text-xs uppercase tracking-wider text-muted"><th className="py-2 pr-3 font-medium">Parcela</th><th className="py-2 pr-3 font-medium">Juros</th><th className="py-2 pr-3 font-medium">Amortização</th><th className="py-2 font-medium">Saldo devedor</th></tr></thead>
-              <tbody className="divide-y divide-[var(--line)]">{(full ? schedule : schedule.slice(0, 6)).map((r) => <tr key={r.k}><td className="py-1.5 pr-3 text-muted">{r.k}</td><td className="py-1.5 pr-3">{cur(r.juros)}</td><td className="py-1.5 pr-3">{cur(r.amort)}</td><td className="py-1.5 font-medium">{cur(r.bal)}</td></tr>)}</tbody>
-            </table>
-            {schedule.length > 6 && <button onClick={() => setFull((f) => !f)} className="mt-3 text-xs font-medium underline underline-offset-2">{full ? "Mostrar menos" : `Ver todas as ${schedule.length} parcelas`}</button>}
-          </div>
-          <Actions copy={`${n}× de ${cur(pmt)} · Total ${cur(pmt * n)} · Juros ${cur(pmt * n - p)}`} onClear={reset} />
-        </ResultPanel>
-      )}
-    </ToolShell>
-  );
-}
-
-/* ---------------------------- Média ponderada ----------------------------- */
-export function MediaPonderada({ meta }: ToolProps) {
-  const init = [{ v: "7", w: "2" }, { v: "8", w: "3" }, { v: "6", w: "1" }];
-  const [rows, setRows] = useState(init);
-  const parsed = rows.map((r) => ({ v: parseNum(r.v), w: parseNum(r.w || "1") })).filter((r) => !Number.isNaN(r.v) && !Number.isNaN(r.w));
-  const sumW = parsed.reduce((a, r) => a + r.w, 0);
-  const wavg = sumW ? parsed.reduce((a, r) => a + r.v * r.w, 0) / sumW : NaN;
-  const avg = parsed.length ? parsed.reduce((a, r) => a + r.v, 0) / parsed.length : NaN;
-  const upd = (i: number, k: "v" | "w", val: string) => setRows((p) => p.map((r, j) => (j === i ? { ...r, [k]: val } : r)));
-  return (
-    <ToolShell meta={meta} examples={[{ label: "Notas 7, 8, 6 (pesos 2, 3, 1)", onClick: () => setRows(init) }, { label: "Quatro provas iguais", onClick: () => setRows([{ v: "6.5", w: "1" }, { v: "8", w: "1" }, { v: "7.5", w: "1" }, { v: "9", w: "1" }]) }]}>
-      <div className="space-y-2">
-        <div className="grid grid-cols-[1fr_1fr_auto] gap-2 text-xs font-medium uppercase tracking-wider text-muted"><span>Valor / nota</span><span>Peso</span><span className="w-8" /></div>
+    <div className="grid gap-6 lg:grid-cols-2">
+      <div className="space-y-3">
+        <div className="grid grid-cols-[1fr_1fr_auto] gap-2 text-xs font-medium text-fg-3"><span>Valor / nota</span><span>Peso</span><span className="w-9" /></div>
         {rows.map((r, i) => (
           <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2">
-            <Input inputMode="decimal" value={r.v} onChange={(e) => upd(i, "v", e.target.value)} placeholder="Nota" />
-            <Input inputMode="decimal" value={r.w} onChange={(e) => upd(i, "w", e.target.value)} placeholder="1" />
-            <button onClick={() => setRows((p) => p.filter((_, j) => j !== i))} disabled={rows.length <= 1} aria-label="Remover" className="w-8 border border-line text-subtle hover:border-strong disabled:opacity-30">×</button>
+            <Input inputMode="decimal" placeholder={`Nota ${i + 1}`} value={r.v} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, v: e.target.value } : x)))} />
+            <Input inputMode="decimal" placeholder="Peso" value={r.p} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, p: e.target.value } : x)))} />
+            <Button size="icon" variant="ghost" onClick={() => setRows(rows.filter((_, j) => j !== i))} disabled={rows.length <= 2} aria-label="Remover"><Trash2 className="h-4 w-4" /></Button>
+          </div>
+        ))}
+        <div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => setRows([...rows, { v: "", p: "1" }])}><Plus className="h-4 w-4" />Adicionar linha</Button><ToolActions onClear={() => setRows([{ v: "", p: "1" }, { v: "", p: "1" }, { v: "", p: "1" }])} /></div>
+      </div>
+      {res ? <ResultBox copyText={`Média ponderada: ${fmt(res.media, 3)}`} footer="Σ(valor × peso) ÷ Σ(pesos)"><div className="grid gap-5 sm:grid-cols-2"><Stat label="Média ponderada" value={fmt(res.media, 3)} big /><Stat label="Soma dos pesos" value={fmt(res.pesos)} /><Stat label="Soma ponderada" value={fmt(res.soma)} /></div></ResultBox> : <EmptyResult />}
+    </div>
+  );
+}
+
+export function ContagemRegressiva() {
+  const [target, setTarget] = useLocalStorage("countdown", { date: "", time: "00:00", name: "" });
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { const id = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(id); }, []);
+  const t = target.date ? new Date(`${target.date}T${target.time || "00:00"}:00`).getTime() : NaN;
+  const diff = Number.isFinite(t) ? t - now : NaN;
+  const abs = Math.abs(diff);
+  const parts = [["dias", Math.floor(abs / DAY)], ["horas", Math.floor((abs % DAY) / 3600000)], ["min", Math.floor((abs % 3600000) / 60000)], ["seg", Math.floor((abs % 60000) / 1000)]] as const;
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <div className="space-y-4">
+        <Field label="Nome do evento"><Input placeholder="Férias, lançamento, prova…" value={target.name} onChange={(e) => setTarget({ ...target, name: e.target.value })} /></Field>
+        <div className="grid grid-cols-2 gap-4"><Field label="Data"><Input type="date" value={target.date} onChange={(e) => setTarget({ ...target, date: e.target.value })} /></Field><Field label="Hora"><Input type="time" value={target.time} onChange={(e) => setTarget({ ...target, time: e.target.value })} /></Field></div>
+        <ToolActions onClear={() => setTarget({ date: "", time: "00:00", name: "" })} />
+      </div>
+      {Number.isFinite(diff) ? (
+        <ResultBox title={diff >= 0 ? `Faltam para ${target.name || "o evento"}` : `Desde ${target.name || "o evento"}`}>
+          <div className="grid grid-cols-4 gap-2">{parts.map(([l, v]) => <div key={l} className="rounded-xl border bg-surface p-3 text-center"><p className="text-2xl font-semibold tabular-nums sm:text-3xl">{String(v).padStart(2, "0")}</p><p className="text-[11px] uppercase tracking-wide text-fg-3">{l}</p></div>)}</div>
+        </ResultBox>
+      ) : <EmptyResult text="Escolha a data do evento." />}
+    </div>
+  );
+}
+
+export function Sorteador() {
+  const [mode, setMode] = useState<"n" | "l">("n");
+  const [min, setMin] = useState("1"); const [max, setMax] = useState("60"); const [qtd, setQtd] = useState("6");
+  const [list, setList] = useState(""); const [res, setRes] = useState<string[]>([]);
+  const run = () => {
+    if (mode === "n") { const a = parseNum(min), b = parseNum(max), q = Math.max(1, Math.floor(parseNum(qtd))); if (bad(a, b) || b < a) return; const pool = Array.from({ length: Math.min(b - a + 1, 100000) }, (_, i) => String(a + i)); setRes(shuffle(pool).slice(0, q)); }
+    else { const items = list.split(/\n|,/).map((s) => s.trim()).filter(Boolean); if (!items.length) return; setRes(shuffle(items).slice(0, Math.max(1, Math.floor(parseNum(qtd)) || 1))); }
+  };
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <div className="space-y-4">
+        <Select value={mode} onChange={(e) => setMode(e.target.value as "n" | "l")}><option value="n">Números em um intervalo</option><option value="l">Nomes de uma lista</option></Select>
+        {mode === "n" ? <div className="grid grid-cols-3 gap-3"><Field label="De"><Input value={min} onChange={(e) => setMin(e.target.value)} /></Field><Field label="Até"><Input value={max} onChange={(e) => setMax(e.target.value)} /></Field><Field label="Quantos"><Input value={qtd} onChange={(e) => setQtd(e.target.value)} /></Field></div>
+          : <><Field label="Participantes (um por linha ou separados por vírgula)"><textarea className="min-h-[120px] w-full rounded-xl border bg-surface p-3 text-sm" value={list} onChange={(e) => setList(e.target.value)} placeholder={"Ana\nBruno\nCarla"} /></Field><Field label="Quantos sortear"><Input value={qtd} onChange={(e) => setQtd(e.target.value)} className="max-w-[120px]" /></Field></>}
+        <div className="flex gap-2"><Button onClick={run}>Sortear</Button><ToolActions onClear={() => setRes([])} copyText={res.join(", ") || undefined} /></div>
+      </div>
+      {res.length ? <ResultBox copyText={res.join(", ")}><div className="flex flex-wrap gap-2">{res.map((r, i) => <span key={i} className="rounded-xl border bg-surface px-4 py-2 text-lg font-semibold tabular-nums">{r}</span>)}</div></ResultBox> : <EmptyResult text="Clique em “Sortear”." />}
+    </div>
+  );
+}
+
+const ZONES = ["America/Sao_Paulo", "America/Manaus", "America/New_York", "America/Los_Angeles", "America/Mexico_City", "America/Buenos_Aires", "Europe/Lisbon", "Europe/London", "Europe/Madrid", "Europe/Berlin", "Europe/Paris", "Africa/Luanda", "Asia/Dubai", "Asia/Kolkata", "Asia/Shanghai", "Asia/Tokyo", "Australia/Sydney", "UTC"];
+export function FusoHorario() {
+  const [from, setFrom] = useState("America/Sao_Paulo"); const [time, setTime] = useState("14:00"); const [date, setDate] = useState(today());
+  const [targets, setTargets] = useState(["Europe/Lisbon", "America/New_York", "Asia/Tokyo"]);
+  const [nowTick, setNowTick] = useState(Date.now());
+  useEffect(() => { const id = setInterval(() => setNowTick(Date.now()), 30000); return () => clearInterval(id); }, []);
+  const conv = (zone: string) => {
+    try {
+      const [h, m] = time.split(":").map(Number); const [Y, M, D] = date.split("-").map(Number);
+      const guess = Date.UTC(Y, M - 1, D, h, m);
+      const off = (z: string, ts: number) => { const p = new Intl.DateTimeFormat("en-US", { timeZone: z, hourCycle: "h23", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric" }).formatToParts(new Date(ts)); const g = (t: string) => Number(p.find((x) => x.type === t)?.value); return Date.UTC(g("year"), g("month") - 1, g("day"), g("hour"), g("minute")) - ts; };
+      const utc = guess - off(from, guess);
+      return new Intl.DateTimeFormat("pt-BR", { timeZone: zone, weekday: "short", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" }).format(new Date(utc));
+    } catch { return "—"; }
+  };
+  return (
+    <div className="space-y-5">
+      <div className="grid gap-4 sm:grid-cols-3"><Field label="Cidade de origem"><Select value={from} onChange={(e) => setFrom(e.target.value)}>{ZONES.map((z) => <option key={z} value={z}>{z.replace("_", " ")}</option>)}</Select></Field><Field label="Data"><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field><Field label="Horário"><Input type="time" value={time} onChange={(e) => setTime(e.target.value)} /></Field></div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {targets.map((z, i) => (
+          <div key={i} className="rounded-2xl border bg-surface-2/60 p-4">
+            <Select className="h-9 mb-3" value={z} onChange={(e) => setTargets(targets.map((t, j) => (j === i ? e.target.value : t)))}>{ZONES.map((o) => <option key={o} value={o}>{o.replace("_", " ")}</option>)}</Select>
+            <p className="text-2xl font-semibold tabular-nums">{conv(z)}</p>
+            <p className="mt-1 text-xs text-fg-3">agora: {new Intl.DateTimeFormat("pt-BR", { timeZone: z, hour: "2-digit", minute: "2-digit" }).format(new Date(nowTick))}</p>
           </div>
         ))}
       </div>
-      {rows.length < 12 && <button onClick={() => setRows((p) => [...p, { v: "", w: "1" }])} className="mt-3 text-xs font-medium underline underline-offset-2">+ adicionar linha</button>}
-      {parsed.length > 0 && (
-        <ResultPanel>
-          <div className="grid gap-6 sm:grid-cols-2">
-            <BigNumber label="Média ponderada" value={num(wavg, 2)} accent sub={`Σ(valor × peso) ÷ ${num(sumW)}`} />
-            <BigNumber label="Média simples" value={num(avg, 2)} sub={`${parsed.length} valores`} />
-          </div>
-          <Actions copy={`Média ponderada: ${num(wavg, 2)}`} onClear={() => setRows([{ v: "", w: "1" }])} />
-        </ResultPanel>
-      )}
-    </ToolShell>
-  );
-}
-
-/* ----------------------------------- ROI ---------------------------------- */
-const ROI_DEF = { inv: "2000", ret: "5000", months: "6" };
-export function ROI({ meta }: ToolProps) {
-  const { v, set, reset, apply } = useFields(ROI_DEF);
-  const inv = parseNum(v.inv), ret = parseNum(v.ret), months = parseNum(v.months || "0");
-  const invalid = [inv, ret].some(Number.isNaN) || inv <= 0;
-  const roi = ((ret - inv) / inv) * 100;
-  const annual = months > 0 ? (Math.pow(1 + roi / 100, 12 / months) - 1) * 100 : NaN;
-  return (
-    <ToolShell meta={meta} examples={[{ label: "Investiu 2.000, retornou 5.000", onClick: () => apply(ROI_DEF) }, { label: "Campanha: 12.000 → 15.500 em 3 meses", onClick: () => apply({ inv: "12000", ret: "15500", months: "3" }) }]}>
-      <ToolGrid cols={3}>
-        <Field label="Investimento"><Input inputMode="decimal" prefix="R$" value={v.inv} onChange={(e) => set("inv", e.target.value)} /></Field>
-        <Field label="Retorno total"><Input inputMode="decimal" prefix="R$" value={v.ret} onChange={(e) => set("ret", e.target.value)} /></Field>
-        <Field label="Período (opcional)"><Input inputMode="decimal" suffix="meses" value={v.months} onChange={(e) => set("months", e.target.value)} /></Field>
-      </ToolGrid>
-      <ErrorText>{invalid && "Informe investimento e retorno."}</ErrorText>
-      {!invalid && (
-        <ResultPanel>
-          <div className="grid gap-6 sm:grid-cols-3">
-            <BigNumber label="ROI" value={pct(roi, 1)} accent sub={roi < 0 ? "Prejuízo" : "Lucro"} />
-            <BigNumber label="Ganho líquido" value={cur(ret - inv)} />
-            <BigNumber label="ROI anualizado" value={Number.isNaN(annual) ? "—" : pct(annual, 1)} sub={months > 0 ? `${num(months)} meses` : "informe o período"} />
-          </div>
-          <Actions copy={`ROI ${pct(roi, 1)} · Ganho ${cur(ret - inv)}`} onClear={reset} />
-        </ResultPanel>
-      )}
-    </ToolShell>
-  );
-}
-
-/* --------------------------- Calculadora de horas ------------------------- */
-function toMin(s: string) {
-  const m = s.match(/^(\d{1,2}):(\d{2})$/);
-  return m ? Number(m[1]) * 60 + Number(m[2]) : NaN;
-}
-const fmtHM = (m: number) => `${Math.floor(m / 60)}h${String(Math.round(m % 60)).padStart(2, "0")}`;
-const CH_DEF = { mode: "between", start: "08:00", end: "17:30", brk: "60", list: "08:15\n07:45\n09:00\n08:30\n07:30" };
-export function CalculadoraDeHoras({ meta }: ToolProps) {
-  const { v, set, reset, apply } = useFields(CH_DEF);
-  let total = NaN, err = "";
-  if (v.mode === "between") {
-    const s = toMin(v.start), e = toMin(v.end), b = parseNum(v.brk || "0");
-    if ([s, e, b].some(Number.isNaN)) err = "Use o formato HH:MM.";
-    else total = (e >= s ? e - s : 1440 - s + e) - b;
-  } else {
-    const mins = v.list.split(/\n|,|;/).map((x) => x.trim()).filter(Boolean).map(toMin);
-    if (mins.some(Number.isNaN)) err = "Cada linha deve estar no formato HH:MM.";
-    else total = mins.reduce((a, b) => a + b, 0);
-  }
-  return (
-    <ToolShell meta={meta} examples={[{ label: "08:00 → 17:30 com 1h de pausa", onClick: () => apply({ ...CH_DEF, mode: "between" }) }, { label: "Somar jornadas da semana", onClick: () => apply({ ...CH_DEF, mode: "sum" }) }]}>
-      <Segmented value={v.mode} onChange={(m) => set("mode", m)} options={[{ value: "between", label: "Entre dois horários" }, { value: "sum", label: "Somar horas" }]} />
-      {v.mode === "between" ? (
-        <ToolGrid cols={3} className="mt-5">
-          <Field label="Entrada"><Input value={v.start} onChange={(e) => set("start", e.target.value)} placeholder="08:00" /></Field>
-          <Field label="Saída"><Input value={v.end} onChange={(e) => set("end", e.target.value)} placeholder="17:30" /></Field>
-          <Field label="Intervalo"><Input inputMode="numeric" suffix="min" value={v.brk} onChange={(e) => set("brk", e.target.value)} /></Field>
-        </ToolGrid>
-      ) : (
-        <Field label="Horas (uma por linha, HH:MM)" className="mt-5"><textarea value={v.list} onChange={(e) => set("list", e.target.value)} rows={5} className="w-full border border-line bg-elev p-3 font-mono text-sm focus:border-strong focus:outline-none" /></Field>
-      )}
-      <ErrorText>{err}</ErrorText>
-      {!err && !Number.isNaN(total) && (
-        <ResultPanel>
-          <div className="grid gap-6 sm:grid-cols-3">
-            <BigNumber label="Total" value={fmtHM(total)} accent />
-            <BigNumber label="Em decimal" value={`${num(total / 60, 2)} h`} />
-            <BigNumber label="Em minutos" value={num(total, 0)} />
-          </div>
-          <Actions copy={`${fmtHM(total)} (${num(total / 60, 2)} h)`} onClear={reset} />
-        </ResultPanel>
-      )}
-    </ToolShell>
-  );
-}
-
-/* ---------------------------- Valor hora freelancer ----------------------- */
-const VH_DEF = { income: "8000", costs: "1500", tax: "6", hoursDay: "6", daysWeek: "5", weeksOff: "4", billable: "65" };
-export function ValorHoraFreelancer({ meta }: ToolProps) {
-  const { v, set, reset } = useFields(VH_DEF);
-  const n = (k: keyof typeof VH_DEF) => parseNum(v[k]);
-  const invalid = (Object.keys(VH_DEF) as (keyof typeof VH_DEF)[]).some((k) => Number.isNaN(n(k)));
-  const weeksYear = 52 - n("weeksOff");
-  const hoursMonth = (n("hoursDay") * n("daysWeek") * weeksYear) / 12;
-  const billableHours = hoursMonth * (n("billable") / 100);
-  const gross = (n("income") + n("costs")) / (1 - n("tax") / 100);
-  const rate = gross / billableHours;
-  return (
-    <ToolShell meta={meta}>
-      <ToolGrid cols={4}>
-        <Field label="Renda líquida desejada/mês"><Input inputMode="decimal" prefix="R$" value={v.income} onChange={(e) => set("income", e.target.value)} /></Field>
-        <Field label="Custos fixos/mês"><Input inputMode="decimal" prefix="R$" value={v.costs} onChange={(e) => set("costs", e.target.value)} /></Field>
-        <Field label="Impostos"><Input inputMode="decimal" suffix="%" value={v.tax} onChange={(e) => set("tax", e.target.value)} /></Field>
-        <Field label="Horas faturáveis"><Input inputMode="decimal" suffix="%" value={v.billable} onChange={(e) => set("billable", e.target.value)} /></Field>
-        <Field label="Horas por dia"><Input inputMode="decimal" value={v.hoursDay} onChange={(e) => set("hoursDay", e.target.value)} /></Field>
-        <Field label="Dias por semana"><Input inputMode="decimal" value={v.daysWeek} onChange={(e) => set("daysWeek", e.target.value)} /></Field>
-        <Field label="Semanas de folga/ano"><Input inputMode="decimal" value={v.weeksOff} onChange={(e) => set("weeksOff", e.target.value)} /></Field>
-      </ToolGrid>
-      <ErrorText>{invalid && "Preencha todos os campos."}</ErrorText>
-      {!invalid && Number.isFinite(rate) && (
-        <ResultPanel>
-          <div className="grid gap-6 sm:grid-cols-3">
-            <BigNumber label="Valor-hora mínimo" value={cur(rate)} accent />
-            <BigNumber label="Faturamento bruto/mês" value={cur(gross)} />
-            <BigNumber label="Horas faturáveis/mês" value={num(billableHours, 0)} sub={`de ${num(hoursMonth, 0)} trabalhadas`} />
-          </div>
-          <KV rows={[["Diária (hora × horas/dia)", cur(rate * n("hoursDay"))], ["Projeto de 40 h", cur(rate * 40)], ["Valor-hora com 20% de margem", cur(rate * 1.2)]]} />
-          <Actions copy={`Valor-hora: ${cur(rate)}`} onClear={reset} />
-        </ResultPanel>
-      )}
-    </ToolShell>
-  );
-}
-
-/* --------------------------- Álcool ou gasolina --------------------------- */
-const AG_DEF = { alc: "3.89", gas: "5.79", kmAlc: "", kmGas: "" };
-export function AlcoolOuGasolina({ meta }: ToolProps) {
-  const { v, set, reset, apply } = useFields(AG_DEF);
-  const alc = parseNum(v.alc), gas = parseNum(v.gas);
-  const invalid = Number.isNaN(alc) || Number.isNaN(gas) || gas <= 0;
-  const kmA = parseNum(v.kmAlc), kmG = parseNum(v.kmGas);
-  const useReal = !Number.isNaN(kmA) && !Number.isNaN(kmG) && kmA > 0 && kmG > 0;
-  const ratio = alc / gas;
-  const costAlc = useReal ? alc / kmA : NaN;
-  const costGas = useReal ? gas / kmG : NaN;
-  const better = useReal ? (costAlc < costGas ? "Etanol" : "Gasolina") : ratio < 0.7 ? "Etanol" : "Gasolina";
-  return (
-    <ToolShell meta={meta} examples={[{ label: "Etanol 3,89 × Gasolina 5,79", onClick: () => apply(AG_DEF) }, { label: "Com consumo real", onClick: () => apply({ alc: "4.19", gas: "5.99", kmAlc: "8.5", kmGas: "12" }) }]}>
-      <ToolGrid cols={4}>
-        <Field label="Preço do etanol"><Input inputMode="decimal" prefix="R$" value={v.alc} onChange={(e) => set("alc", e.target.value)} /></Field>
-        <Field label="Preço da gasolina"><Input inputMode="decimal" prefix="R$" value={v.gas} onChange={(e) => set("gas", e.target.value)} /></Field>
-        <Field label="km/l com etanol (opcional)"><Input inputMode="decimal" value={v.kmAlc} onChange={(e) => set("kmAlc", e.target.value)} placeholder="8,5" /></Field>
-        <Field label="km/l com gasolina (opcional)"><Input inputMode="decimal" value={v.kmGas} onChange={(e) => set("kmGas", e.target.value)} placeholder="12" /></Field>
-      </ToolGrid>
-      <ErrorText>{invalid && "Informe os dois preços."}</ErrorText>
-      {!invalid && (
-        <ResultPanel>
-          <BigNumber label={useReal ? "Pelo consumo real do seu carro" : "Pela regra dos 70%"} value={`Abasteça com ${better}`} accent />
-          <KV rows={useReal ? [["Custo por km (etanol)", cur(costAlc)], ["Custo por km (gasolina)", cur(costGas)], ["Economia por km", cur(Math.abs(costAlc - costGas))]] : [["Relação etanol ÷ gasolina", num(ratio, 3)], ["Limite de referência", "0,700"], ["Preço máximo do etanol para compensar", cur(gas * 0.7)]]} />
-          <Actions copy={`Compensa: ${better} (relação ${num(ratio, 3)})`} onClear={reset} />
-        </ResultPanel>
-      )}
-    </ToolShell>
-  );
-}
-
-/* ================================== DATAS ================================= */
-
-const todayISO = () => new Date().toISOString().slice(0, 10);
-const fmtBR = (d: Date) => d.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
-
-function diffYMD(from: Date, to: Date) {
-  let y = to.getFullYear() - from.getFullYear();
-  let m = to.getMonth() - from.getMonth();
-  let d = to.getDate() - from.getDate();
-  if (d < 0) {
-    m--;
-    d += new Date(to.getFullYear(), to.getMonth(), 0).getDate();
-  }
-  if (m < 0) {
-    y--;
-    m += 12;
-  }
-  return { y, m, d };
-}
-const parseDate = (s: string) => {
-  const d = new Date(s + "T00:00:00");
-  return Number.isNaN(d.getTime()) ? null : d;
-};
-
-export function CalculadoraDeIdade({ meta }: ToolProps) {
-  const { v, set, reset } = useFields({ birth: "1990-03-15", ref: todayISO() });
-  const b = parseDate(v.birth), r = parseDate(v.ref);
-  const invalid = !b || !r || b > r;
-  const ymd = !invalid ? diffYMD(b!, r!) : null;
-  const days = !invalid ? Math.floor((r!.getTime() - b!.getTime()) / 86400000) : 0;
-  let next = 0;
-  if (!invalid) {
-    const nb = new Date(r!.getFullYear(), b!.getMonth(), b!.getDate());
-    if (nb < r!) nb.setFullYear(nb.getFullYear() + 1);
-    next = Math.round((nb.getTime() - r!.getTime()) / 86400000);
-  }
-  return (
-    <ToolShell meta={meta}>
-      <ToolGrid>
-        <Field label="Data de nascimento"><Input type="date" value={v.birth} onChange={(e) => set("birth", e.target.value)} /></Field>
-        <Field label="Calcular em"><Input type="date" value={v.ref} onChange={(e) => set("ref", e.target.value)} /></Field>
-      </ToolGrid>
-      <ErrorText>{invalid && "Informe datas válidas (nascimento anterior à referência)."}</ErrorText>
-      {ymd && (
-        <ResultPanel>
-          <BigNumber value={`${ymd.y} anos, ${ymd.m} meses e ${ymd.d} dias`} accent />
-          <KV rows={[["Total em dias", num(days, 0)], ["Total em semanas", num(days / 7, 1)], ["Total em meses", num(ymd.y * 12 + ymd.m, 0)], ["Próximo aniversário", next === 0 ? "Hoje! 🎂" : `em ${next} dias`], ["Dia da semana em que nasceu", b!.toLocaleDateString("pt-BR", { weekday: "long" })]]} />
-          <Actions copy={`${ymd.y} anos, ${ymd.m} meses e ${ymd.d} dias`} onClear={reset} />
-        </ResultPanel>
-      )}
-    </ToolShell>
-  );
-}
-
-export function DiferencaEntreDatas({ meta }: ToolProps) {
-  const { v, set, reset, apply } = useFields({ a: "2025-01-01", b: "2025-12-31", inclusive: false as boolean });
-  const a = parseDate(v.a), b = parseDate(v.b);
-  const invalid = !a || !b;
-  const [from, to] = !invalid && a! > b! ? [b!, a!] : [a!, b!];
-  const days = !invalid ? Math.round((to.getTime() - from.getTime()) / 86400000) + (v.inclusive ? 1 : 0) : 0;
-  let business = 0;
-  if (!invalid) {
-    const d = new Date(from);
-    const end = new Date(to);
-    if (!v.inclusive) end.setDate(end.getDate() - 1);
-    while (d <= end) {
-      const wd = d.getDay();
-      if (wd !== 0 && wd !== 6) business++;
-      d.setDate(d.getDate() + 1);
-    }
-  }
-  const ymd = !invalid ? diffYMD(from, to) : null;
-  return (
-    <ToolShell meta={meta} examples={[{ label: "Ano de 2025", onClick: () => apply({ a: "2025-01-01", b: "2025-12-31", inclusive: false }) }, { label: "Hoje até o Natal", onClick: () => apply({ a: todayISO(), b: `${new Date().getFullYear()}-12-25`, inclusive: false }) }]}>
-      <ToolGrid cols={3}>
-        <Field label="Data inicial"><Input type="date" value={v.a} onChange={(e) => set("a", e.target.value)} /></Field>
-        <Field label="Data final"><Input type="date" value={v.b} onChange={(e) => set("b", e.target.value)} /></Field>
-        <div className="pt-6"><Toggle checked={v.inclusive} onChange={(x) => set("inclusive", x)} label="Incluir o último dia" /></div>
-      </ToolGrid>
-      <ErrorText>{invalid && "Informe as duas datas."}</ErrorText>
-      {ymd && (
-        <ResultPanel>
-          <div className="grid gap-6 sm:grid-cols-3">
-            <BigNumber label="Dias" value={num(days, 0)} accent />
-            <BigNumber label="Dias úteis (seg–sex)" value={num(business, 0)} />
-            <BigNumber label="Semanas" value={num(days / 7, 1)} />
-          </div>
-          <KV rows={[["Anos, meses e dias", `${ymd.y}a ${ymd.m}m ${ymd.d}d`], ["Meses (aprox.)", num(days / 30.44, 1)], ["Horas", num(days * 24, 0)], ["Fins de semana", num(days - business - (v.inclusive ? 0 : 0), 0)]]} />
-          <Actions copy={`${days} dias (${business} úteis)`} onClear={reset} />
-        </ResultPanel>
-      )}
-    </ToolShell>
-  );
-}
-
-export function SomarDias({ meta }: ToolProps) {
-  const { v, set, reset, apply } = useFields({ base: todayISO(), n: "90", unit: "d", op: "add", business: false as boolean });
-  const base = parseDate(v.base);
-  const n = Math.round(parseNum(v.n));
-  const invalid = !base || Number.isNaN(n);
-  let result: Date | null = null;
-  if (!invalid) {
-    result = new Date(base!);
-    const sign = v.op === "add" ? 1 : -1;
-    if (v.unit === "d") {
-      if (v.business) {
-        let left = Math.abs(n);
-        while (left > 0) {
-          result.setDate(result.getDate() + sign);
-          const wd = result.getDay();
-          if (wd !== 0 && wd !== 6) left--;
-        }
-      } else result.setDate(result.getDate() + sign * n);
-    } else if (v.unit === "w") result.setDate(result.getDate() + sign * n * 7);
-    else if (v.unit === "m") result.setMonth(result.getMonth() + sign * n);
-    else result.setFullYear(result.getFullYear() + sign * n);
-  }
-  return (
-    <ToolShell meta={meta} examples={[{ label: "Hoje + 90 dias", onClick: () => apply({ base: todayISO(), n: "90", unit: "d", op: "add", business: false }) }, { label: "Hoje + 30 dias úteis", onClick: () => apply({ base: todayISO(), n: "30", unit: "d", op: "add", business: true }) }]}>
-      <ToolGrid cols={4}>
-        <Field label="Data base"><Input type="date" value={v.base} onChange={(e) => set("base", e.target.value)} /></Field>
-        <Field label="Operação"><Select value={v.op} onChange={(e) => set("op", e.target.value)}><option value="add">Somar</option><option value="sub">Subtrair</option></Select></Field>
-        <Field label="Quantidade"><Input inputMode="numeric" value={v.n} onChange={(e) => set("n", e.target.value)} /></Field>
-        <Field label="Unidade"><Select value={v.unit} onChange={(e) => set("unit", e.target.value)}><option value="d">Dias</option><option value="w">Semanas</option><option value="m">Meses</option><option value="y">Anos</option></Select></Field>
-      </ToolGrid>
-      {v.unit === "d" && <div className="mt-3 max-w-xs"><Toggle checked={v.business} onChange={(b) => set("business", b)} label="Apenas dias úteis" /></div>}
-      <ErrorText>{invalid && "Informe data e quantidade."}</ErrorText>
-      {result && (
-        <ResultPanel>
-          <BigNumber value={result.toLocaleDateString("pt-BR")} accent sub={fmtBR(result)} />
-          <Actions copy={result.toLocaleDateString("pt-BR")} onClear={reset} />
-        </ResultPanel>
-      )}
-    </ToolShell>
-  );
-}
-
-export function ContagemRegressiva({ meta }: ToolProps) {
-  const saved = (() => { try { return localStorage.getItem("nexo:countdown") ?? ""; } catch { return ""; } })();
-  const defaultTarget = `${new Date().getFullYear() + 1}-01-01T00:00`;
-  const [target, setTarget] = useState(saved || defaultTarget);
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  useEffect(() => { try { localStorage.setItem("nexo:countdown", target); } catch { /* noop */ } }, [target]);
-  const t = new Date(target).getTime();
-  const invalid = Number.isNaN(t);
-  const diff = Math.max(0, t - now);
-  const d = Math.floor(diff / 86400000), h = Math.floor((diff % 86400000) / 3600000), m = Math.floor((diff % 3600000) / 60000), s = Math.floor((diff % 60000) / 1000);
-  return (
-    <ToolShell meta={meta} examples={[{ label: "Réveillon", onClick: () => setTarget(defaultTarget) }, { label: "Natal", onClick: () => setTarget(`${new Date().getFullYear()}-12-25T00:00`) }]}>
-      <Field label="Data e hora do evento" className="max-w-sm"><Input type="datetime-local" value={target} onChange={(e) => setTarget(e.target.value)} /></Field>
-      <ErrorText>{invalid && "Informe uma data válida."}</ErrorText>
-      {!invalid && (
-        <ResultPanel title={diff === 0 ? "Chegou!" : "Faltam"}>
-          <div className="grid grid-cols-4 gap-2 sm:gap-4">
-            {[[d, "dias"], [h, "horas"], [m, "min"], [s, "seg"]].map(([val, lab]) => (
-              <div key={lab as string} className="border border-line p-3 text-center sm:p-5">
-                <div className="font-display text-3xl font-bold tabular sm:text-5xl">{String(val).padStart(2, "0")}</div>
-                <div className="eyebrow mt-1">{lab}</div>
-              </div>
-            ))}
-          </div>
-          <Actions copy={`Faltam ${d} dias, ${h}h ${m}min para ${new Date(target).toLocaleString("pt-BR")}`} />
-        </ResultPanel>
-      )}
-    </ToolShell>
-  );
-}
-
-export function DiaDaSemana({ meta }: ToolProps) {
-  const [date, setDate] = useState("2000-01-01");
-  const d = parseDate(date);
-  let info: [string, string][] = [];
-  if (d) {
-    const start = new Date(d.getFullYear(), 0, 1);
-    const doy = Math.floor((d.getTime() - start.getTime()) / 86400000) + 1;
-    const tmp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-    const dayNum = tmp.getUTCDay() || 7;
-    tmp.setUTCDate(tmp.getUTCDate() + 4 - dayNum);
-    const yStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
-    const week = Math.ceil(((tmp.getTime() - yStart.getTime()) / 86400000 + 1) / 7);
-    const leap = (d.getFullYear() % 4 === 0 && d.getFullYear() % 100 !== 0) || d.getFullYear() % 400 === 0;
-    info = [["Dia do ano", `${doy} de ${leap ? 366 : 365}`], ["Semana ISO", `${week}`], ["Trimestre", `${Math.floor(d.getMonth() / 3) + 1}º`], ["Ano bissexto", leap ? "Sim" : "Não"], ["Dias até o fim do ano", `${(leap ? 366 : 365) - doy}`]];
-  }
-  return (
-    <ToolShell meta={meta} examples={[{ label: "01/01/2000", onClick: () => setDate("2000-01-01") }, { label: "Natal de 2030", onClick: () => setDate("2030-12-25") }, { label: "Hoje", onClick: () => setDate(todayISO()) }]}>
-      <Field label="Data" className="max-w-xs"><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
-      <ErrorText>{!d && "Informe uma data válida."}</ErrorText>
-      {d && (
-        <ResultPanel>
-          <BigNumber value={d.toLocaleDateString("pt-BR", { weekday: "long" })} accent sub={fmtBR(d)} className="capitalize" />
-          <KV rows={info} />
-          <Actions copy={fmtBR(d)} />
-        </ResultPanel>
-      )}
-    </ToolShell>
+    </div>
   );
 }

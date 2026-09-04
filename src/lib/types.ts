@@ -1,18 +1,8 @@
 export type ContentKind = "tool" | "news" | "article" | "tutorial" | "guide" | "video" | "prompt";
 
-export type ToolCategory =
-  | "calculadoras"
-  | "conversores"
-  | "texto"
-  | "geradores"
-  | "ia"
-  | "produtividade"
-  | "datas";
+export type ToolCategory = "calculadoras" | "datas" | "conversores" | "texto" | "geradores" | "ia" | "produtividade";
 
-export interface FAQItem {
-  q: string;
-  a: string;
-}
+export interface FAQItem { q: string; a: string }
 
 export interface ToolMeta {
   slug: string;
@@ -45,20 +35,16 @@ export interface BaseContent {
   category: string;
   tags: string[];
   author: string;
-  publishedAt: string; // ISO date
-  readingTime: number; // minutes
+  publishedAt: string;
+  readingTime: number;
   body: ContentBlock[];
   featured?: boolean;
   cover?: string;
   source?: { name: string; url?: string };
 }
 
-export interface NewsItem extends BaseContent {
-  kind: "news";
-}
-export interface ArticleItem extends BaseContent {
-  kind: "article";
-}
+export interface NewsItem extends BaseContent { kind: "news" }
+export interface ArticleItem extends BaseContent { kind: "article" }
 export interface TutorialItem extends BaseContent {
   kind: "tutorial";
   level: "iniciante" | "intermediário" | "avançado";
@@ -71,7 +57,7 @@ export interface GuideItem extends BaseContent {
 }
 export interface VideoItem extends BaseContent {
   kind: "video";
-  duration: string; // "12:34"
+  duration: string;
   channel: string;
   youtubeId?: string;
   keyPoints: string[];
@@ -80,17 +66,7 @@ export interface VideoItem extends BaseContent {
 
 export type ContentItem = NewsItem | ArticleItem | TutorialItem | GuideItem | VideoItem;
 
-export type PromptCategory =
-  | "ia"
-  | "marketing"
-  | "vendas"
-  | "negocios"
-  | "programacao"
-  | "imagens"
-  | "videos"
-  | "estudos"
-  | "produtividade"
-  | "conteudo";
+export type PromptCategory = "ia" | "marketing" | "vendas" | "negocios" | "programacao" | "imagens" | "videos" | "estudos" | "produtividade" | "conteudo";
 
 export interface PromptItem {
   slug: string;
@@ -116,9 +92,4 @@ export interface SearchDoc {
   haystack: string;
 }
 
-export interface Category {
-  slug: string;
-  name: string;
-  description: string;
-  kinds: ContentKind[];
-}
+export interface Category { slug: string; name: string; description: string; kinds: ContentKind[] }
