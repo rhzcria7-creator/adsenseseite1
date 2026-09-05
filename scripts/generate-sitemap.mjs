@@ -1,26 +1,54 @@
-// Gera public/sitemap.xml a partir dos slugs em src/data/* (sem executar TS).
-// Uso: node scripts/generate-sitemap.mjs
+/**
+ * Gera public/sitemap.xml a partir dos dados em src/data.
+ * Uso: node scripts/generate-sitemap.mjs
+ * (Executa via regex sobre os arquivos TS para não exigir build/transpilação.)
+ */
 import { readFileSync, writeFileSync } from "node:fs";
-const SITE = "https://nexo.app";
-const read = (p) => readFileSync(new URL(`../src/data/${p}`, import.meta.url), "utf8");
-const slugs = (src, re) => [...src.matchAll(re)].map((m) => m[1]);
-const tools = slugs(read("tools.ts"), /\bt\("([^"]+)"/g);
-const prompts = slugs(read("prompts.ts"), /\bpr\("([^"]+)"/g);
-const news = slugs(read("news.ts"), /\bn\("([^"]+)"/g);
-const articles = slugs(read("articles.ts"), /\ba\("([^"]+)"/g);
-const learning = read("learning.ts");
-const tutorials = slugs(learning, /\btut\("([^"]+)"/g), guides = slugs(learning, /\bguide\("([^"]+)"/g), videos = slugs(learning, /\bvid\("([^"]+)"/g);
-const toolCats = ["calculadoras", "datas", "conversores", "texto", "geradores", "ia", "produtividade"];
-const promptCats = ["ia", "marketing", "vendas", "negocios", "programacao", "imagens", "videos", "estudos", "produtividade", "conteudo"];
-const cats = ["inteligencia-artificial", "tecnologia", "programacao", "marketing", "negocios", "design", "financas", "produtividade", "seguranca", "hardware", "carreira", "educacao", "produto", "conteudo", "utilidades"];
-const urls = [
-  ["/", 1.0], ["/ferramentas", 0.9], ["/prompts", 0.9], ["/prompts/builder", 0.9], ["/noticias", 0.8], ["/blog", 0.8], ["/tutoriais", 0.8], ["/guias", 0.8], ["/videos", 0.8], ["/categorias", 0.6], ["/tags", 0.5], ["/sobre", 0.4], ["/contato", 0.4], ["/privacidade", 0.3], ["/termos", 0.3], ["/anuncios", 0.3], ["/sitemap", 0.3],
-  ...toolCats.map((c) => [`/ferramentas/categoria/${c}`, 0.7]), ...tools.map((s) => [`/ferramentas/${s}`, 0.8]),
-  ...promptCats.map((c) => [`/prompts/categoria/${c}`, 0.6]), ...prompts.map((s) => [`/prompts/${s}`, 0.7]),
-  ...news.map((s) => [`/noticias/${s}`, 0.7]), ...articles.map((s) => [`/blog/${s}`, 0.7]), ...tutorials.map((s) => [`/tutoriais/${s}`, 0.7]), ...guides.map((s) => [`/guias/${s}`, 0.7]), ...videos.map((s) => [`/videos/${s}`, 0.6]),
-  ...cats.map((c) => [`/categorias/${c}`, 0.5]),
-];
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const root = resolve(__dirname, "..");
+const SITE = "https://nexo-ia.vercel.app";
 const today = new Date().toISOString().slice(0, 10);
-const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(([u, p]) => `  <url><loc>${SITE}${u}</loc><lastmod>${today}</lastmod><priority>${p.toFixed(1)}</priority></url>`).join("\n")}\n</urlset>\n`;
-writeFileSync(new URL("../public/sitemap.xml", import.meta.url), xml);
-console.log(`sitemap.xml: ${urls.length} URLs`);
+
+const read = (p) => readFileSync(resolve(root, p), "utf8");
+const slugs = (src) => [...src.matchAll(/slug:\s*"([^"]+)"/g)].map((m) => m[1]);
+const slugify = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
+const urls = new Set(["/", "/ferramentas", "/prompts", "/prompts/builder", "/noticias", "/blog", "/tutoriais", "/guias", "/videos", "/tendencias", "/tags", "/sobre", "/contato", "/privacidade", "/termos"]);
+
+// tools + categories
+const toolsSrc = read("src/data/tools.ts");
+for (const s of slugs(toolsSrc)) urls.add(s.match(/^(calculadoras|datas|conversores|texto|geradores|ia|produtividade)$/) ? `/ferramentas/categoria/${s}` : `/ferramentas/${s}`);
+
+// prompts + categories
+const promptsSrc = read("src/data/prompts.ts");
+for (const s of slugs(promptsSrc)) urls.add(s.match(/^(ia|marketing|vendas|programacao|negocios|imagens|videos|estudos|produtividade|conteudo)$/) ? `/prompts/categoria/${s}` : `/prompts/${s}`);
+
+// content
+const add = (file, base) => {
+  const src = read(file);
+  for (const s of slugs(src)) urls.add(`${base}/${s}`);
+  for (const m of src.matchAll(/category:\s*"([^"]+)"/g)) urls.add(`${base}/categoria/${slugify(m[1])}`);
+};
+add("src/data/news.ts", "/noticias");
+add("src/data/articles.ts", "/blog");
+// learning.ts contains tutorials, guides and videos: split by section markers
+const learning = read("src/data/learning.ts");
+const [tutPart, rest] = learning.split("export const guides");
+const [guidePart, videoPart] = rest.split("export const videos");
+for (const s of slugs(tutPart)) urls.add(`/tutoriais/${s}`);
+for (const s of slugs(guidePart)) urls.add(`/guias/${s}`);
+for (const s of slugs(videoPart)) urls.add(`/videos/${s}`);
+for (const [part, base] of [[tutPart, "/tutoriais"], [guidePart, "/guias"], [videoPart, "/videos"]]) for (const m of part.matchAll(/category:\s*"([^"]+)"/g)) urls.add(`${base}/categoria/${slugify(m[1])}`);
+
+// tags
+const tags = new Set();
+for (const src of [toolsSrc, promptsSrc, read("src/data/news.ts"), read("src/data/articles.ts"), learning]) for (const m of src.matchAll(/tags:\s*\[([^\]]*)\]/g)) for (const t of m[1].matchAll(/"([^"]+)"/g)) tags.add(slugify(t[1]));
+for (const t of tags) urls.add(`/tags/${t}`);
+
+const priority = (u) => (u === "/" ? "1.0" : /^\/(ferramentas|prompts)\/[^/]+$/.test(u) ? "0.8" : u.split("/").length <= 2 ? "0.9" : "0.6");
+const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[...urls].sort().map((u) => `  <url><loc>${SITE}${u}</loc><lastmod>${today}</lastmod><changefreq>weekly</changefreq><priority>${priority(u)}</priority></url>`).join("\n")}\n</urlset>\n`;
+writeFileSync(resolve(root, "public/sitemap.xml"), xml);
+console.log(`sitemap.xml gerado com ${urls.size} URLs`);

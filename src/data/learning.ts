@@ -1,132 +1,271 @@
-import type { ContentBlock, GuideItem, TutorialItem, VideoItem } from "@/lib/types";
+import type { Article, Block, Video } from "@/lib/types";
 
-const p = (text: string): ContentBlock => ({ type: "p", text });
-const ul = (items: string[]): ContentBlock => ({ type: "ul", items });
-const callout = (text: string): ContentBlock => ({ type: "callout", text });
+const P = (text: string): Block => ({ type: "p", text });
+const H = (text: string): Block => ({ type: "h2", text });
+const UL = (items: string[]): Block => ({ type: "ul", items });
+const OL = (items: string[]): Block => ({ type: "ol", items });
+const C = (text: string, tone: "info" | "tip" | "warn" = "info"): Block => ({ type: "callout", tone, text });
+const CODE = (code: string, lang = "text"): Block => ({ type: "code", lang, code });
+const AD: Block = { type: "ad" };
 
-type Step = TutorialItem["steps"][number];
-function tut(slug: string, title: string, excerpt: string, category: string, tags: string[], publishedAt: string, level: TutorialItem["level"], intro: string, steps: Step[], toolsUsed: string[] = []): TutorialItem {
-  return { kind: "tutorial", slug, title, excerpt, category, tags, author: "Equipe Nexo", publishedAt, readingTime: Math.max(4, steps.length * 2), body: [p(intro)], level, steps, toolsUsed };
-}
+const t = (a: Omit<Article, "kind">): Article => ({ kind: "tutorial", ...a });
+const g = (a: Omit<Article, "kind">): Article => ({ kind: "guide", ...a });
 
-export const TUTORIALS: TutorialItem[] = [
-  tut("como-criar-um-qr-code-para-wifi", "Como criar um QR Code para a rede Wi-Fi", "Visitantes conectam sem digitar senha. Passo a passo com o gerador do Nexo e dicas de impressão.", "utilidades", ["QR Code", "Wi-Fi", "utilidades"], "2026-03-14", "iniciante", "Um QR Code de Wi-Fi codifica nome da rede, senha e tipo de segurança em um formato que iPhones e Androids reconhecem nativamente pela câmera.", [
-    { title: "Abra o gerador de QR Code", text: "Acesse Ferramentas → Gerador de QR Code e escolha o modo 'Wi-Fi'." },
-    { title: "Preencha os dados da rede", text: "Informe o nome (SSID) exatamente como aparece, a senha e o tipo de segurança (WPA/WPA2 na maioria dos casos)." },
-    { title: "Ajuste a correção de erro", text: "Use nível M para uso normal. Se for imprimir pequeno ou colar em superfície que pode riscar, use H." },
-    { title: "Baixe e imprima", text: "Baixe em PNG (tamanho 512 px ou maior). Imprima com pelo menos 3 cm de lado e margem branca ao redor." },
-    { title: "Teste antes de fixar", text: "Aponte a câmera do celular. Se não reconhecer, aumente o tamanho ou o contraste." },
-  ], ["qr-code"]),
-  tut("como-calcular-juros-compostos-passo-a-passo", "Como calcular juros compostos passo a passo (com e sem aportes)", "Entenda a fórmula, faça o cálculo à mão para um caso simples e confira na calculadora para cenários com aportes mensais.", "financas", ["juros compostos", "finanças", "matemática"], "2026-03-10", "iniciante", "Juros compostos são juros sobre juros: a cada período, o rendimento é somado ao capital e passa a render também.", [
-    { title: "Identifique as variáveis", text: "Capital inicial (C), taxa por período (i, em decimal) e número de períodos (t). Taxa e período devem estar na mesma unidade." },
-    { title: "Aplique a fórmula", text: "M = C × (1 + i)^t. Exemplo: R$ 1.000 a 1% ao mês por 12 meses → 1000 × 1,01^12 = R$ 1.126,83.", code: "M = 1000 * (1 + 0.01) ** 12  // 1126.83", lang: "js" },
-    { title: "Com aportes mensais", text: "Some o valor futuro de uma série: A × [((1+i)^t − 1) ÷ i]. Com A = R$ 200: 200 × [(1,01^12 − 1) ÷ 0,01] = R$ 2.536,50.", code: "FV = 200 * (((1.01) ** 12 - 1) / 0.01)  // 2536.50", lang: "js" },
-    { title: "Converta taxas quando necessário", text: "Taxa anual para mensal: (1 + i_a)^(1/12) − 1. 12% a.a. ≈ 0,949% a.m., não 1%." },
-    { title: "Confira na calculadora", text: "Use a calculadora de juros compostos do Nexo para ver a tabela período a período e testar cenários." },
-  ], ["juros-compostos"]),
-  tut("como-montar-um-prompt-para-gerar-imagens", "Como montar um prompt para gerar imagens com IA", "Sujeito, estilo, luz, câmera e composição: a ordem e o peso de cada parte para Midjourney, DALL·E e Stable Diffusion.", "inteligencia-artificial", ["imagens", "Midjourney", "prompts"], "2026-03-07", "intermediário", "Modelos de imagem respondem melhor a descrições visuais concretas do que a conceitos abstratos. 'Uma pessoa feliz' é vago; 'mulher de 30 anos rindo, luz de fim de tarde, 85mm' não é.", [
-    { title: "Comece pelo sujeito", text: "Quem ou o que, com 2–3 atributos visuais: idade, roupa, expressão, material, cor." },
-    { title: "Defina o estilo", text: "Fotografia, ilustração, 3D, aquarela, pixel art. Adicione referências de época ou movimento (editorial dos anos 90, bauhaus)." },
-    { title: "Descreva luz e atmosfera", text: "Luz natural suave, contraluz, neon, golden hour, estúdio com softbox. A luz muda tudo." },
-    { title: "Escolha câmera e composição", text: "Distância focal (35mm, 85mm), plano (close, plano médio, aéreo), profundidade de campo." },
-    { title: "Adicione parâmetros da plataforma", text: "Midjourney: --ar 3:2 --stylize 200. Stable Diffusion: negative prompt para o que evitar.", code: "retrato editorial de uma ceramista em seu ateliê, mãos com argila, luz lateral de janela, 50mm, profundidade de campo rasa, cores terrosas --ar 4:5 --stylize 150", lang: "text" },
-    { title: "Use o gerador do Nexo", text: "O gerador de prompt de imagem monta essa estrutura a partir de seleções e ajusta a sintaxe por plataforma." },
-  ], ["gerador-de-prompt-de-imagem"]),
-  tut("como-configurar-modo-escuro-com-tailwind-v4", "Como configurar modo escuro com Tailwind CSS v4 e tokens semânticos", "Uma variante custom, variáveis CSS por tema e persistência da escolha do usuário — sem flash de tema errado.", "programacao", ["Tailwind", "CSS", "dark mode"], "2026-03-04", "intermediário", "Tailwind v4 usa CSS nativo para configuração. Isso simplifica o modo escuro: definimos uma variante baseada em classe e tokens em variáveis CSS.", [
-    { title: "Declare a variante dark", text: "No CSS principal, crie a variante baseada na classe .dark na raiz.", code: "@import \"tailwindcss\";\n@custom-variant dark (&:where(.dark, .dark *));", lang: "css" },
-    { title: "Defina tokens por tema", text: "Use variáveis para superfície, texto e borda, e exponha como cores no @theme.", code: ":root { --bg: #fbfbf9; --fg: #111110; }\n.dark { --bg: #0b0b0a; --fg: #f3f3ef; }\n@theme { --color-bg: var(--bg); --color-fg: var(--fg); }", lang: "css" },
-    { title: "Use as classes semânticas", text: "Em vez de bg-white dark:bg-neutral-900, escreva bg-bg text-fg. O tema resolve sozinho." },
-    { title: "Evite o flash", text: "Aplique a classe antes do React montar, com um script inline no head.", code: "<script>\n  try { var t = localStorage.getItem('theme');\n  if (t === 'dark' || (!t && matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark'); } catch(e){}\n</script>", lang: "html" },
-    { title: "Persista a escolha", text: "Ao alternar, salve em localStorage e atualize a meta theme-color para a barra do navegador." },
-  ]),
-  tut("como-criar-senhas-fortes-e-gerencia-las", "Como criar senhas fortes e gerenciá-las sem enlouquecer", "Entropia, frases-senha, gerenciador e 2FA: o kit mínimo de segurança pessoal em 15 minutos.", "seguranca", ["senhas", "segurança", "2FA"], "2026-03-01", "iniciante", "Senha forte não é senha difícil de lembrar — é senha difícil de adivinhar e única por serviço. A combinação de gerador + gerenciador resolve as duas coisas.", [
-    { title: "Instale um gerenciador de senhas", text: "Escolha um com sincronização entre dispositivos e criptografia de ponta a ponta. A senha mestra é a única que você vai memorizar." },
-    { title: "Crie uma frase-senha mestra", text: "Quatro ou cinco palavras aleatórias, separadas por hífen. Use o modo 'frase-senha' do gerador do Nexo para sortear." },
-    { title: "Gere senhas únicas para cada serviço", text: "16+ caracteres com letras, números e símbolos. Deixe o gerenciador preencher." },
-    { title: "Ative 2FA nos serviços críticos", text: "E-mail, banco, redes sociais. Prefira aplicativo autenticador ou passkeys a SMS." },
-    { title: "Troque senhas repetidas", text: "Comece pelas contas mais importantes. Use a verificação de vazamentos do gerenciador para priorizar." },
-  ], ["gerador-de-senha"]),
-  tut("como-formatar-e-validar-json", "Como formatar, validar e depurar JSON de APIs", "Erros comuns de sintaxe, como ler a mensagem de erro e converter entre JSON e CSV para análise em planilha.", "programacao", ["JSON", "APIs", "dados"], "2026-02-25", "iniciante", "JSON é rígido: uma vírgula a mais quebra tudo. Saber ler a mensagem de erro economiza minutos de busca.", [
-    { title: "Cole o JSON no formatador", text: "Use o formatador do Nexo. Se válido, ele indenta; se inválido, aponta a posição do erro." },
-    { title: "Erros mais comuns", text: "Vírgula após o último item, aspas simples em vez de duplas, comentários, valores undefined e chaves sem aspas." },
-    { title: "Minifique para envio", text: "Antes de enviar em uma requisição ou salvar em banco, minifique para reduzir tamanho." },
-    { title: "Converta para CSV para análise", text: "Arrays de objetos planos podem virar CSV com a ferramenta CSV ⇄ JSON e ser abertos em planilha." },
-  ], ["json-formatter", "csv-para-json"]),
-  tut("como-fazer-uma-revisao-semanal", "Como fazer uma revisão semanal de produtividade em 20 minutos", "O ritual que mantém qualquer sistema de tarefas confiável. Passos, perguntas e ferramentas gratuitas do Nexo.", "produtividade", ["produtividade", "planejamento", "revisão"], "2026-02-21", "iniciante", "Sem revisão, listas envelhecem e você para de confiar nelas. Vinte minutos por semana evitam isso.", [
-    { title: "Capture tudo", text: "Anote nas notas rápidas tudo o que está pendente na cabeça, no e-mail e em papéis." },
-    { title: "Processe a lista", text: "Para cada item: fazer, agendar, delegar ou eliminar. Mova para a matriz de Eisenhower." },
-    { title: "Olhe o calendário", text: "Duas semanas à frente. Há preparação necessária para algum compromisso?" },
-    { title: "Escolha três prioridades", text: "Marque as três tarefas da semana na lista de tarefas com prioridade alta." },
-    { title: "Registre hábitos", text: "Atualize o rastreador de hábitos e observe a sequência." },
-  ], ["notas-rapidas", "matriz-eisenhower", "lista-de-tarefas", "rastreador-de-habitos"]),
-  tut("como-escolher-um-modelo-de-ia-para-seu-projeto", "Como escolher um modelo de IA para o seu projeto", "Critérios práticos: qualidade na tarefa, custo por token, latência, contexto, privacidade e licença.", "inteligencia-artificial", ["LLM", "modelos", "custo"], "2026-02-17", "avançado", "Não existe melhor modelo — existe o melhor modelo para uma tarefa, um orçamento e um requisito de privacidade.", [
-    { title: "Defina a tarefa com exemplos", text: "Colete 20–50 exemplos reais de entrada e saída esperada. Sem isso, qualquer comparação é opinião." },
-    { title: "Estime volume e custo", text: "Use o estimador de tokens e a calculadora de custo de API para projetar o gasto mensal de cada candidato." },
-    { title: "Filtre por requisitos duros", text: "Contexto mínimo, privacidade (dados podem sair da empresa?), latência máxima, licença para uso comercial." },
-    { title: "Rode uma avaliação cega", text: "Gere respostas de 2–3 modelos e avalie sem saber qual é qual. Use o comparador do Nexo para pré-selecionar." },
-    { title: "Comece pequeno e escale", text: "Escolha o menor modelo que atende ao critério. Reserve os maiores para os casos difíceis via roteamento." },
-  ], ["estimador-de-tokens", "custo-de-api-ia", "comparador-de-modelos"]),
+export const tutorials: Article[] = [
+  t({
+    slug: "primeiros-passos-com-chatgpt-para-trabalho", title: "Primeiros passos com ChatGPT (e similares) para o trabalho", level: "iniciante",
+    excerpt: "Do zero à primeira tarefa útil em 20 minutos: configurar, escrever o primeiro prompt bom e evitar as armadilhas iniciais.",
+    category: "IA", tags: ["chatgpt", "iniciante", "trabalho"], date: "2026-03-07T09:00:00Z", readTime: 12, author: "Equipe Nexo", cover: "blue", popularity: 92,
+    body: [
+      P("Este tutorial assume que você nunca usou um assistente de IA para trabalhar. Ao final, você terá um fluxo repetível para e-mails, resumos e planejamento."),
+      H("Passo 1 — Defina uma tarefa pequena e real"),
+      P("Escolha algo que você faria hoje de qualquer jeito: responder um e-mail, resumir um documento, montar uma pauta. Tarefas reais mostram o valor rápido."),
+      H("Passo 2 — Escreva o prompt com contexto"),
+      CODE("Você é meu assistente de comunicação. Contexto: sou coordenador de logística e preciso avisar 3 fornecedores sobre mudança de horário de recebimento (agora das 8h às 12h). Escreva um e-mail curto, cordial e objetivo, com assunto. Público: gerentes comerciais dos fornecedores."),
+      H("Passo 3 — Peça revisão, não aceite a primeira"),
+      P("Responda: 'Deixe mais curto e remova qualquer frase genérica.' Repita até ficar bom. Iterar é a habilidade central."),
+      AD,
+      H("Passo 4 — Crie um 'prompt base' para tarefas recorrentes"),
+      P("Salve prompts que funcionaram. Use nosso [Prompt Builder](/prompts/builder) para estruturar e o histórico local para reutilizar."),
+      H("Armadilhas"),
+      UL(["Confiar em fatos, números e citações sem verificar.", "Colar dados confidenciais em ferramentas sem política de privacidade adequada.", "Pedir tudo de uma vez: divida em etapas."]),
+      C("Exercício: repita o processo com 3 tarefas diferentes esta semana e anote quanto tempo economizou.", "tip"),
+    ],
+  }),
+  t({
+    slug: "rodar-um-modelo-de-ia-localmente-com-ollama", title: "Como rodar um modelo de IA localmente com Ollama", level: "intermediário",
+    excerpt: "Instale, baixe um modelo, converse pelo terminal e integre com sua aplicação via API local em menos de 30 minutos.",
+    category: "IA", tags: ["ollama", "llm local", "privacidade"], date: "2026-03-03T09:00:00Z", readTime: 15, author: "Equipe Nexo", cover: "teal", popularity: 85,
+    body: [
+      P("Rodar um LLM localmente é a forma mais simples de garantir privacidade e custo zero por token. Ollama abstrai a complexidade em três comandos."),
+      H("Requisitos"),
+      UL(["8 GB de RAM para modelos de 3B; 16 GB para 7–8B.", "GPU opcional, mas acelera muito (NVIDIA, Apple Silicon ou AMD).", "10–20 GB de disco livre."]),
+      H("Instalação e primeiro modelo"),
+      CODE("# macOS / Linux\ncurl -fsSL https://ollama.com/install.sh | sh\n\n# baixar e conversar\nollama run llama3.2", "bash"),
+      AD,
+      H("Usando a API local"),
+      CODE("curl http://localhost:11434/api/generate -d '{\n  \"model\": \"llama3.2\",\n  \"prompt\": \"Resuma em uma frase: ...\",\n  \"stream\": false\n}'", "bash"),
+      H("Integração em JavaScript"),
+      CODE("const r = await fetch('http://localhost:11434/api/chat', {\n  method: 'POST',\n  body: JSON.stringify({ model: 'llama3.2', messages: [{ role: 'user', content: 'Olá!' }], stream: false })\n});\nconst data = await r.json();\nconsole.log(data.message.content);", "js"),
+      C("Modelos quantizados (Q4_K_M) oferecem o melhor equilíbrio entre qualidade e memória para uso pessoal.", "info"),
+    ],
+  }),
+  t({
+    slug: "criar-um-gerador-de-qr-code-em-react", title: "Criando um gerador de QR Code em React (com download em PNG)", level: "intermediário",
+    excerpt: "Use a biblioteca qrcode, um canvas e alguns hooks para construir a mesma ferramenta que usamos aqui no Nexo.",
+    category: "Desenvolvimento", tags: ["react", "qr code", "canvas"], date: "2026-02-25T09:00:00Z", readTime: 10, author: "Equipe Nexo", cover: "violet", popularity: 74,
+    body: [
+      P("QR Codes são um ótimo primeiro projeto: entrada simples, saída visual, e um caso real de uso do elemento canvas."),
+      H("1. Instalar"),
+      CODE("npm i qrcode @types/qrcode", "bash"),
+      H("2. Componente"),
+      CODE("import { useEffect, useRef, useState } from 'react';\nimport QRCode from 'qrcode';\n\nexport function QR() {\n  const [text, setText] = useState('https://exemplo.com');\n  const ref = useRef<HTMLCanvasElement>(null);\n  useEffect(() => {\n    if (ref.current) QRCode.toCanvas(ref.current, text || ' ', { width: 256, margin: 2 });\n  }, [text]);\n  const download = () => {\n    const a = document.createElement('a');\n    a.href = ref.current!.toDataURL('image/png');\n    a.download = 'qrcode.png';\n    a.click();\n  };\n  return (<>\n    <input value={text} onChange={e => setText(e.target.value)} />\n    <canvas ref={ref} />\n    <button onClick={download}>Baixar PNG</button>\n  </>);\n}", "tsx"),
+      AD,
+      H("3. Extras"),
+      UL(["Nível de correção de erro: 'L', 'M', 'Q', 'H' (H suporta logo no centro).", "Formato Wi-Fi: `WIFI:T:WPA;S:nome;P:senha;;`", "Debounce de 150 ms para não redesenhar a cada tecla."]),
+      C("Veja o resultado final no nosso [Gerador de QR Code](/ferramentas/gerador-de-qr-code).", "tip"),
+    ],
+  }),
+  t({
+    slug: "automatizar-tarefas-com-ia-sem-programar", title: "Automatize tarefas repetitivas com IA sem programar", level: "iniciante",
+    excerpt: "Combine planilhas, um assistente de IA e automações no-code para eliminar trabalho manual em uma semana.",
+    category: "Produtividade", tags: ["automação", "no-code", "ia"], date: "2026-02-19T09:00:00Z", readTime: 11, author: "Equipe Nexo", cover: "amber", popularity: 80,
+    body: [
+      P("Você não precisa de código para automatizar 80% das tarefas chatas. Precisa de três coisas: identificar o padrão, descrever a regra e conectar as pontas."),
+      H("Passo 1 — Mapeie a tarefa"),
+      UL(["Qual é o gatilho? (e-mail chega, linha nova na planilha, horário)", "Qual é a transformação? (classificar, resumir, extrair dados)", "Qual é a saída? (mensagem, linha, documento)"]),
+      H("Passo 2 — Prove com IA manualmente"),
+      P("Antes de automatizar, cole 10 exemplos no assistente e valide se a transformação funciona. Use o prompt 'Extrator de dados estruturados (JSON)' da nossa [central de prompts](/prompts)."),
+      AD,
+      H("Passo 3 — Conecte"),
+      P("Ferramentas de automação no-code permitem: gatilho → chamada a um modelo de IA com seu prompt → ação. Comece com uma automação por semana."),
+      C("Sempre inclua um passo de revisão humana para saídas que afetam clientes ou dinheiro.", "warn"),
+    ],
+  }),
+  t({
+    slug: "escrever-artigos-de-blog-com-ia-sem-parecer-robo", title: "Como escrever artigos com IA sem parecer robô", level: "intermediário",
+    excerpt: "Um processo em 5 etapas: pesquisa, ângulo, esqueleto, rascunho assistido e edição humana. Com prompts prontos.",
+    category: "Conteúdo", tags: ["blog", "escrita", "seo"], date: "2026-02-12T09:00:00Z", readTime: 9, author: "Equipe Nexo", cover: "rose", popularity: 77,
+    body: [
+      P("Texto gerado sem direção tem cheiro de IA: parágrafos simétricos, listas de três itens, 'em resumo' no final. O antídoto é usar a IA como assistente de pesquisa e edição — não como autor."),
+      OL(["**Pesquisa**: peça um mapa dos subtópicos e perguntas que as pessoas fazem.", "**Ângulo**: decida você o que é diferente no seu texto (experiência, dado, opinião).", "**Esqueleto**: gere a estrutura de headings e ajuste.", "**Rascunho**: escreva você os parágrafos-chave; use IA para expandir seções mecânicas.", "**Edição**: peça para cortar 30%, apontar clichês e verificar clareza."]),
+      AD,
+      C("Use o prompt 'Reescrever para clareza e concisão' e o 'Analisador de Legibilidade' para a etapa final.", "tip"),
+    ],
+  }),
+  t({
+    slug: "deploy-de-um-site-estatico-na-vercel", title: "Deploy de um site estático na Vercel em 5 minutos", level: "iniciante",
+    excerpt: "Do repositório no GitHub ao domínio próprio com HTTPS, sem configurar servidor.",
+    category: "Desenvolvimento", tags: ["vercel", "deploy", "hospedagem"], date: "2026-02-05T09:00:00Z", readTime: 6, author: "Equipe Nexo", cover: "ink", popularity: 70,
+    body: [
+      OL(["Suba o projeto para um repositório no GitHub.", "Acesse vercel.com, clique em 'Add New Project' e importe o repositório.", "Confirme o framework detectado (Vite) e o comando de build (`npm run build`).", "Clique em Deploy. Em ~1 minuto o site estará no ar com HTTPS.", "Em Settings → Domains, adicione seu domínio e aponte o DNS conforme instruído."]),
+      AD,
+      C("Para SPAs com rotas no cliente, adicione rewrites no vercel.json. Veja o [guia de deploy de SPA](/guias/deploy-de-spa-react-na-vercel).", "info"),
+    ],
+  }),
+  t({
+    slug: "prompts-para-midjourney-do-basico-ao-avancado", title: "Prompts para Midjourney: do básico aos parâmetros avançados", level: "intermediário",
+    excerpt: "Estrutura de prompt, pesos, --ar, --style raw, --sref e como manter consistência entre imagens.",
+    category: "Criatividade", tags: ["midjourney", "imagens", "prompts"], date: "2026-01-29T09:00:00Z", readTime: 9, author: "Equipe Nexo", cover: "rose", popularity: 81,
+    body: [
+      P("Um bom prompt de imagem descreve **sujeito, ação, ambiente, luz, lente/estilo e parâmetros** — nessa ordem de importância."),
+      CODE("cinematic portrait of an elderly fisherman mending nets, harbor at dawn, soft golden light, 85mm lens, shallow depth of field, Kodak Portra 400 --ar 3:2 --style raw --v 6"),
+      H("Parâmetros essenciais"),
+      UL(["--ar: proporção (16:9, 4:5, 1:1).", "--style raw: menos 'embelezamento' automático.", "--stylize 0–1000: quanto o modelo impõe estética própria.", "--sref URL: referência de estilo para consistência.", "--no texto, marca d'água: negativos."]),
+      AD,
+      C("Explore prompts prontos na categoria [Imagens](/prompts/categoria/imagens).", "tip"),
+    ],
+  }),
+  t({
+    slug: "organizar-notas-e-conhecimento-com-ia", title: "Organize notas e conhecimento pessoal com ajuda de IA", level: "iniciante",
+    excerpt: "Um sistema simples de captura, processamento e revisão que usa IA para resumir, conectar e resgatar suas notas.",
+    category: "Produtividade", tags: ["notas", "pkm", "produtividade"], date: "2026-01-22T09:00:00Z", readTime: 8, author: "Equipe Nexo", cover: "green", popularity: 66,
+    body: [
+      H("Capture sem organizar"),
+      P("Uma única caixa de entrada. Nossa ferramenta [Notas Rápidas](/ferramentas/notas-rapidas) salva automaticamente no navegador."),
+      H("Processe uma vez por semana"),
+      UL(["Cole as notas da semana no prompt 'Resumo executivo'.", "Peça: temas recorrentes, decisões pendentes, ideias que merecem projeto."]),
+      AD,
+      H("Revise com perguntas"),
+      P("Em vez de reler, pergunte à IA sobre suas próprias notas: 'o que eu escrevi sobre X nos últimos 3 meses?'"),
+    ],
+  }),
 ];
 
-function guide(slug: string, title: string, excerpt: string, category: string, tags: string[], publishedAt: string, intro: string, chapters: GuideItem["chapters"], featured = false): GuideItem {
-  return { kind: "guide", slug, title, excerpt, category, tags, author: "Equipe Nexo", publishedAt, readingTime: chapters.length * 4, body: [p(intro)], chapters, featured };
-}
-
-export const GUIDES: GuideItem[] = [
-  guide("guia-completo-de-engenharia-de-prompts", "Guia completo de engenharia de prompts", "Do básico ao avançado: estrutura, técnicas (few-shot, chain-of-thought, personas), avaliação e biblioteca de padrões.", "inteligencia-artificial", ["prompts", "LLM", "guia"], "2026-03-12", "Engenharia de prompts é a habilidade de especificar problemas para modelos de linguagem. Este guia organiza o que funciona de forma consistente.", [
-    { title: "Fundamentos", summary: "Como modelos interpretam instruções e por que o contexto importa.", body: [p("Modelos preveem continuações prováveis. Um prompt define a distribuição de onde a resposta vai sair. Quanto mais específico o contexto, mais estreita e útil é essa distribuição."), ul(["Seja explícito sobre público e objetivo.", "Prefira instruções positivas ('faça X') a negativas ('não faça Y').", "Separe claramente instrução, contexto e dados de entrada."])] },
-    { title: "Estrutura RCTF", summary: "Papel, contexto, tarefa e formato: o esqueleto de um bom prompt.", body: [p("Role define expertise; Context define a situação; Task define o verbo; Format define a saída. A maioria dos prompts fracos ignora dois desses quatro."), callout("Use o Prompt Builder do Nexo para montar RCTF a partir de campos.")] },
-    { title: "Técnicas avançadas", summary: "Few-shot, cadeia de raciocínio, autoavaliação e decomposição.", body: [ul(["Few-shot: 2–3 exemplos de entrada/saída ensinam o formato melhor do que descrições.", "Chain-of-thought: peça para raciocinar antes de responder em problemas lógicos.", "Autoavaliação: peça para criticar a própria resposta contra critérios.", "Decomposição: divida tarefas grandes em prompts encadeados."])] },
-    { title: "Avaliação", summary: "Como saber se um prompt melhorou de verdade.", body: [p("Monte um conjunto de teste com 20+ entradas reais. Para cada mudança no prompt, rode todas e compare. Sem isso, você otimiza para o último exemplo que viu.")] },
-    { title: "Biblioteca de padrões", summary: "Padrões reutilizáveis para escrita, código, análise e dados.", body: [p("A central de prompts do Nexo reúne dezenas de templates por categoria, com variáveis para adaptar. Salve os favoritos e consulte o histórico.")] },
-  ], true),
-  guide("guia-de-financas-pessoais-com-calculadoras", "Guia de finanças pessoais com calculadoras", "Orçamento, dívidas, reserva de emergência, investimentos e aposentadoria — cada capítulo com a ferramenta certa para fazer as contas.", "financas", ["finanças pessoais", "investimentos", "orçamento"], "2026-03-05", "Finanças pessoais são 20% matemática e 80% comportamento. Este guia cuida da matemática para que você foque no resto.", [
-    { title: "Orçamento", summary: "Onde o dinheiro vai e como decidir para onde deveria ir.", body: [p("Registre um mês de gastos e classifique em fixos, variáveis e supérfluos. A regra 50/30/20 é um ponto de partida, não uma lei."), callout("Ferramentas: calculadora de porcentagem e conversor de salário para hora — saber quanto custa uma compra em horas de trabalho muda decisões.")] },
-    { title: "Dívidas", summary: "Juros compostos trabalhando contra você e como inverter isso.", body: [p("Liste dívidas por taxa. Quite primeiro a de maior juros (método avalanche) ou a menor (bola de neve) se precisar de motivação."), ul(["Compare parcelamento vs. à vista com a calculadora de parcelamento.", "Converta taxas mensais para anuais antes de comparar."])] },
-    { title: "Reserva de emergência", summary: "Quanto guardar e onde.", body: [p("De 3 a 12 meses de gastos essenciais, em aplicação líquida. Quem tem renda variável precisa de mais.")] },
-    { title: "Investimentos", summary: "Juros compostos a seu favor: tempo, aporte e taxa.", body: [p("Comece pelo prazo. Depois pelo aporte constante. A taxa é o que menos você controla."), callout("Simule na calculadora de juros compostos e no CAGR para comparar cenários.")] },
-    { title: "Aposentadoria", summary: "Independência financeira e a regra dos 4%.", body: [p("Patrimônio alvo = gasto anual ÷ 4%. Use a calculadora de independência financeira para estimar quantos anos faltam com seus aportes atuais.")] },
-  ], true),
-  guide("guia-de-seguranca-digital-para-pessoas-comuns", "Guia de segurança digital para pessoas comuns", "Senhas, autenticação, golpes, privacidade e backup — sem paranoia, com prioridades claras.", "seguranca", ["segurança", "privacidade", "golpes"], "2026-02-27", "Segurança digital é gestão de risco. Você não precisa se proteger de tudo — precisa fechar as portas mais usadas pelos ataques comuns.", [
-    { title: "Senhas e gerenciador", summary: "A base de tudo.", body: [p("Senhas únicas e longas, guardadas em um gerenciador. Frase-senha mestra memorizável. Nunca reutilize senha de e-mail."), callout("Gere com o gerador de senha do Nexo — tudo local.")] },
-    { title: "Autenticação em dois fatores", summary: "A segunda porta.", body: [ul(["Aplicativo autenticador > SMS.", "Passkeys onde disponível.", "Guarde códigos de recuperação offline."])] },
-    { title: "Golpes comuns", summary: "Phishing, falsa central, boleto falso e urgência.", body: [p("Sinais: urgência, pedido de dados por link, remetente parecido mas não idêntico. Regra: nunca aja pelo canal que iniciou o contato; ligue você para o número oficial.")] },
-    { title: "Privacidade", summary: "Reduzir a superfície.", body: [ul(["Revise permissões de apps.", "Use e-mails alternativos para cadastros.", "Desative rastreamento entre apps."])] },
-    { title: "Backup", summary: "O que faz a diferença quando tudo dá errado.", body: [p("Regra 3-2-1: três cópias, dois meios, uma fora de casa. Teste a restauração uma vez por ano.")] },
-  ]),
-  guide("guia-de-seo-tecnico-para-sites-estaticos", "Guia de SEO técnico para sites estáticos e SPAs", "Como fazer um site 100% front-end ranquear: renderização, metadados, sitemap, dados estruturados e performance.", "marketing", ["SEO", "SPA", "performance"], "2026-02-19", "Sites estáticos e SPAs podem ranquear bem — desde que o buscador consiga ler o conteúdo e entender a estrutura.", [
-    { title: "Renderização e indexação", summary: "O que o Google enxerga em uma SPA.", body: [p("O Googlebot executa JavaScript, mas com atraso e limites. Conteúdo crítico deve aparecer rápido. Prefira URLs limpas (history API) a hash routing em produção."), callout("Este projeto usa BrowserRouter na Vercel via VITE_ROUTER=browser e rewrites em vercel.json.")] },
-    { title: "Metadados por página", summary: "Title, description, canonical e Open Graph.", body: [ul(["Title único, até 60 caracteres.", "Description 150–160 caracteres.", "Canonical absoluto.", "og:title, og:description, og:image."])] },
-    { title: "Dados estruturados", summary: "JSON-LD para artigos, FAQs e breadcrumbs.", body: [p("Article, FAQPage, BreadcrumbList e HowTo cobrem a maior parte de sites de conteúdo e ferramentas.")] },
-    { title: "Sitemap e robots", summary: "Ajude o rastreador.", body: [p("Gere sitemap.xml com todas as URLs e referencie no robots.txt. Atualize a cada deploy.")] },
-    { title: "Performance", summary: "Core Web Vitals.", body: [ul(["LCP < 2,5 s: otimize a imagem principal e fontes.", "INP < 200 ms: evite trabalho pesado na thread principal.", "CLS < 0,1: reserve espaço para anúncios e imagens."])] },
-  ]),
-  guide("guia-de-produtividade-com-ferramentas-gratuitas", "Guia de produtividade com ferramentas gratuitas", "Um sistema completo — captura, priorização, foco, hábitos e revisão — usando apenas o navegador.", "produtividade", ["produtividade", "foco", "hábitos"], "2026-02-13", "Você não precisa de mais um app. Precisa de um sistema simples que sobreviva a semanas ruins.", [
-    { title: "Captura", summary: "Tirar da cabeça.", body: [p("Notas rápidas para tudo o que surgir. Processe uma vez por dia.")] },
-    { title: "Priorização", summary: "Urgente × importante.", body: [p("Matriz de Eisenhower para decidir. Lista de tarefas com no máximo três prioridades por dia.")] },
-    { title: "Foco", summary: "Blocos de trabalho.", body: [p("Pomodoro para tarefas que você evita. Cronômetro para medir quanto tempo as coisas realmente levam.")] },
-    { title: "Hábitos", summary: "Consistência sobre intensidade.", body: [p("Rastreador de hábitos com 1–3 hábitos. Sequências visíveis motivam mais do que metas distantes.")] },
-    { title: "Revisão", summary: "Manutenção do sistema.", body: [p("20 minutos por semana. Veja o tutorial de revisão semanal.")] },
-  ]),
-  guide("guia-para-comecar-a-programar-com-ia", "Guia para começar a programar com ajuda de IA", "Como usar assistentes de código sem virar refém deles: fundamentos, fluxo de trabalho, revisão e aprendizado real.", "programacao", ["programação", "IA", "carreira"], "2026-02-09", "Assistentes de código aceleram quem sabe o que está fazendo e confundem quem não sabe. Este guia é para atravessar essa fronteira.", [
-    { title: "Fundamentos primeiro", summary: "O que aprender antes de delegar.", body: [ul(["Lógica, tipos, funções e estruturas de dados.", "Como ler um erro e uma stack trace.", "Git básico."])] },
-    { title: "Fluxo de trabalho", summary: "Especificar, gerar, revisar, testar.", body: [p("Escreva o que a função deve fazer, incluindo casos de borda. Peça o código. Leia linha a linha. Rode os testes. Se não entendeu uma linha, pergunte antes de aceitar.")] },
-    { title: "Revisão crítica", summary: "Onde a IA erra com confiança.", body: [ul(["APIs inexistentes ou desatualizadas.", "Tratamento de erro ausente.", "Segurança: injeção, validação de entrada.", "Complexidade desnecessária."])] },
-    { title: "Aprendizado real", summary: "Como não estagnar.", body: [p("Uma vez por semana, resolva algo sem assistente. Refaça do zero o que a IA gerou em um projeto pequeno. Explique o código para outra pessoa.")] },
-  ]),
+export const guides: Article[] = [
+  g({
+    slug: "guia-completo-de-engenharia-de-prompts", title: "Guia completo de engenharia de prompts (2026)", level: "intermediário",
+    excerpt: "Da estrutura básica a técnicas avançadas: few-shot, chain-of-thought, personas, formatos de saída e avaliação.",
+    category: "IA", tags: ["prompts", "guia", "llm"], date: "2026-03-06T09:00:00Z", readTime: 18, author: "Equipe Nexo", cover: "blue", popularity: 95,
+    body: [
+      P("Este guia consolida o que funciona de forma consistente em modelos atuais. Cada técnica vem com quando usar e um exemplo."),
+      H("1. Estrutura base"),
+      P("Objetivo, contexto, público, tom, formato e resultado esperado. Veja o [método em 6 partes](/blog/como-escrever-prompts-que-funcionam)."),
+      H("2. Few-shot: mostre exemplos"),
+      CODE("Classifique o sentimento.\nTexto: 'Entrega rápida, produto ok.' → Neutro\nTexto: 'Nunca mais compro aqui.' → Negativo\nTexto: 'Superou expectativas!' → Positivo\nTexto: 'Chegou quebrado mas trocaram rápido.' →"),
+      H("3. Raciocínio passo a passo"),
+      P("Para problemas lógicos e matemáticos, peça para pensar antes de responder e verificar o resultado. Modelos de raciocínio já fazem isso internamente; ainda assim, pedir verificação melhora a taxa de acerto."),
+      AD,
+      H("4. Personas com limites"),
+      P("'Você é um advogado tributarista' melhora vocabulário, não conhecimento. Combine persona com regras: o que fazer quando não souber, como formatar, o que evitar."),
+      H("5. Formatos de saída"),
+      UL(["JSON com esquema para integração.", "Tabelas para comparação.", "Markdown com headings para documentos."]),
+      H("6. Decomposição"),
+      P("Tarefas complexas em cadeia: gerar esqueleto → expandir cada seção → revisar → consolidar. Cada etapa com seu prompt."),
+      H("7. Avaliação"),
+      P("Crie 20–50 casos de teste com resposta esperada. Rode a cada mudança de prompt. É a única forma de saber se 'melhorou'."),
+      C("Todos esses padrões estão disponíveis como templates na [Central de Prompts](/prompts).", "tip"),
+    ],
+  }),
+  g({
+    slug: "guia-de-ferramentas-de-ia-por-categoria", title: "Guia de ferramentas de IA por categoria: o que usar para cada tarefa", level: "iniciante",
+    excerpt: "Texto, imagem, vídeo, áudio, código, pesquisa e automação. Critérios de escolha e alternativas gratuitas.",
+    category: "IA", tags: ["ferramentas", "ia", "guia"], date: "2026-02-28T09:00:00Z", readTime: 14, author: "Equipe Nexo", cover: "teal", popularity: 87,
+    body: [
+      P("Em vez de listar marcas que mudam todo mês, este guia organiza por **tarefa** e dá critérios de escolha duráveis."),
+      H("Texto e assistentes gerais"),
+      UL(["Critério: qualidade de raciocínio, janela de contexto, política de dados.", "Alternativa gratuita: modelos abertos locais via Ollama."]),
+      H("Imagem"),
+      UL(["Critério: fotorrealismo × ilustração, controle (referências, inpainting), licença comercial.", "Alternativa gratuita: Stable Diffusion local."]),
+      AD,
+      H("Vídeo"),
+      UL(["Critério: duração por clipe, consistência de personagem, image-to-video.", "Uso realista hoje: B-roll, storyboards, variações de anúncio."]),
+      H("Código"),
+      UL(["Critério: integração com IDE, modo agente, suporte à sua linguagem.", "Regra: testes automatizados + review humano sempre."]),
+      H("Pesquisa"),
+      UL(["Critério: citações verificáveis, atualidade das fontes.", "Sempre abra as fontes citadas."]),
+      C("Antes de pagar, use nosso checklist: [Como avaliar uma ferramenta de IA](/blog/como-avaliar-uma-ferramenta-de-ia-antes-de-pagar).", "tip"),
+    ],
+  }),
+  g({
+    slug: "deploy-de-spa-react-na-vercel", title: "Deploy de SPA React na Vercel: rotas, rewrites e variáveis de ambiente", level: "intermediário",
+    excerpt: "Tudo o que muda quando seu site tem rotas no cliente: configuração de rewrites, 404, cache e variáveis VITE_*.",
+    category: "Desenvolvimento", tags: ["vercel", "react router", "deploy"], date: "2026-02-21T09:00:00Z", readTime: 9, author: "Equipe Nexo", cover: "violet", popularity: 79,
+    body: [
+      H("O problema"),
+      P("Ao acessar `/blog/meu-post` diretamente, o servidor procura um arquivo nesse caminho e retorna 404. A solução é reescrever todas as rotas para `index.html`."),
+      H("vercel.json"),
+      CODE("{\n  \"rewrites\": [{ \"source\": \"/(.*)\", \"destination\": \"/index.html\" }]\n}", "json"),
+      AD,
+      H("Variáveis de ambiente"),
+      P("Só variáveis com prefixo `VITE_` são expostas ao cliente. Defina em Settings → Environment Variables e acesse com `import.meta.env.VITE_NOME`."),
+      H("Hash vs Browser Router"),
+      P("HashRouter funciona em qualquer host sem configuração (URLs com #). BrowserRouter gera URLs limpas, melhores para SEO, mas exige o rewrite acima. Este projeto usa HashRouter por padrão e BrowserRouter quando `VITE_ROUTER=browser`."),
+      C("Após o deploy, teste abrir uma rota interna diretamente em aba anônima.", "tip"),
+    ],
+  }),
+  g({
+    slug: "guia-de-financas-pessoais-com-calculadoras", title: "Guia de finanças pessoais: da reserva de emergência ao primeiro investimento", level: "iniciante",
+    excerpt: "Um roteiro em 6 etapas com as calculadoras certas para cada decisão: orçamento, dívidas, reserva, metas e juros compostos.",
+    category: "Finanças", tags: ["finanças", "investimentos", "planejamento"], date: "2026-02-15T09:00:00Z", readTime: 13, author: "Equipe Nexo", cover: "green", popularity: 84,
+    body: [
+      H("Etapa 1 — Saiba para onde vai o dinheiro"),
+      P("Categorize 3 meses de gastos. Use a [Calculadora de Porcentagem](/ferramentas/calculadora-de-porcentagem) para ver quanto cada categoria representa."),
+      H("Etapa 2 — Quite dívidas caras"),
+      P("Simule o custo real com o [Simulador de Financiamento](/ferramentas/simulador-de-financiamento). Dívidas acima de 2% ao mês devem vir antes de qualquer investimento."),
+      H("Etapa 3 — Reserva de emergência"),
+      P("De 3 a 6 meses de despesas. Calcule quanto guardar por mês na [Meta de Economia](/ferramentas/meta-de-economia)."),
+      AD,
+      H("Etapa 4 — Metas com prazo"),
+      P("Para cada objetivo, defina valor, prazo e aporte. A [Diferença entre Datas](/ferramentas/diferenca-entre-datas) ajuda a contar os meses."),
+      H("Etapa 5 — Juros compostos a seu favor"),
+      P("Simule cenários na [Calculadora de Juros Compostos](/ferramentas/juros-compostos) e leia [o artigo com exemplos](/blog/juros-compostos-explicados-com-exemplos)."),
+      H("Etapa 6 — Revise trimestralmente"),
+      UL(["Ajuste aportes conforme a renda.", "Compare taxas e custos.", "Não pare nos meses ruins."]),
+    ],
+  }),
+  g({
+    slug: "guia-de-seguranca-digital-para-todos", title: "Guia de segurança digital para todos: 15 medidas que realmente importam", level: "iniciante",
+    excerpt: "Senhas, 2FA, golpes por mensagem, backup e privacidade em redes sociais. Priorizado por impacto.",
+    category: "Segurança", tags: ["segurança", "privacidade", "golpes"], date: "2026-02-08T09:00:00Z", readTime: 11, author: "Equipe Nexo", cover: "ink", popularity: 78,
+    body: [
+      H("Prioridade máxima"),
+      OL(["Gerenciador de senhas e senhas únicas ([gerador](/ferramentas/gerador-de-senha)).", "Autenticação em dois fatores no e-mail e no banco.", "Backup automático de fotos e documentos (regra 3-2-1)."]),
+      H("Contra golpes"),
+      UL(["Desconfie de urgência e de links em mensagens.", "Confirme por outro canal antes de transferir dinheiro.", "Nunca informe códigos recebidos por SMS a ninguém."]),
+      AD,
+      H("Privacidade"),
+      UL(["Revise permissões de apps a cada 6 meses.", "Perfis privados para menores.", "Desative rastreamento de anúncios no sistema."]),
+    ],
+  }),
+  g({
+    slug: "guia-de-carreira-em-ia-e-dados", title: "Guia de carreira em IA e dados: trilhas, habilidades e portfólio", level: "intermediário",
+    excerpt: "Engenharia de ML, engenharia de dados, analista, produto de IA e engenharia de prompts: o que cada trilha exige e como começar.",
+    category: "Carreira", tags: ["carreira", "ia", "dados"], date: "2026-01-31T09:00:00Z", readTime: 12, author: "Equipe Nexo", cover: "amber", popularity: 76,
+    body: [
+      H("As trilhas"),
+      UL(["**Engenharia de dados**: pipelines, SQL, cloud. Porta de entrada mais ampla.", "**Análise de dados**: SQL, visualização, comunicação de insights.", "**Engenharia de ML**: modelos em produção, MLOps, avaliação.", "**Produto de IA**: definir problemas, métricas e experiência.", "**Aplicações com LLM**: RAG, agentes, avaliação de prompts."]),
+      AD,
+      H("Portfólio que funciona"),
+      OL(["Um projeto ponta a ponta com dados reais e deploy.", "Um texto explicando decisões e erros.", "Contribuição pequena em projeto open source."]),
+      C("Use o 'Gerador de Perguntas de Entrevista' para treinar e o 'Plano de estudos' na central de prompts para organizar a trilha.", "tip"),
+    ],
+  }),
+  g({
+    slug: "guia-de-seo-tecnico-para-sites-react", title: "Guia de SEO técnico para sites React: o que fazer sem SSR", level: "avançado",
+    excerpt: "Metadados dinâmicos, dados estruturados, sitemap, performance e as limitações reais de SPAs para indexação.",
+    category: "Desenvolvimento", tags: ["seo", "react", "spa"], date: "2026-01-24T09:00:00Z", readTime: 10, author: "Equipe Nexo", cover: "violet", popularity: 71,
+    body: [
+      P("O Google renderiza JavaScript, mas com atraso e orçamento limitado. Sem SSR, você maximiza o que dá: metadados corretos, HTML semântico e sinais estruturados."),
+      H("Checklist"),
+      UL(["Title e description atualizados por rota (este site usa um hook `useSeo`).", "Canonical e Open Graph por página.", "JSON-LD: Article, FAQPage, BreadcrumbList, SoftwareApplication.", "Sitemap.xml gerado a partir dos dados e robots.txt.", "URLs limpas (BrowserRouter + rewrites) em produção.", "Performance: code splitting por rota e imagens otimizadas."]),
+      AD,
+      C("Se SEO for crítico para o negócio, considere pré-renderização estática das rotas ou um framework com SSR.", "warn"),
+    ],
+  }),
 ];
 
-function vid(slug: string, title: string, excerpt: string, category: string, tags: string[], publishedAt: string, duration: string, channel: string, keyPoints: string[], transcriptSummary: string, youtubeId?: string): VideoItem {
-  return { kind: "video", slug, title, excerpt, category, tags, author: channel, publishedAt, readingTime: Math.ceil(parseInt(duration) || 10), body: [p(transcriptSummary)], duration, channel, youtubeId, keyPoints, transcriptSummary };
-}
+const v = (a: Omit<Video, "kind">): Video => ({ kind: "video", ...a });
 
-export const VIDEOS: VideoItem[] = [
-  vid("como-agentes-de-ia-funcionam-por-dentro", "Como agentes de IA funcionam por dentro", "Planejamento, uso de ferramentas, memória e loops de verificação — explicados com diagramas.", "inteligencia-artificial", ["agentes", "LLM", "arquitetura"], "2026-03-15", "18:40", "Nexo Explica", ["Um agente é um loop: observar, planejar, agir, verificar.", "Ferramentas são funções descritas para o modelo em linguagem natural.", "Memória de curto prazo é o contexto; longo prazo exige armazenamento externo.", "Falhas comuns: loops infinitos e ações sem confirmação."], "O vídeo parte de um exemplo concreto — reservar uma mesa em restaurante — e mostra cada decisão do agente, o que é enviado ao modelo em cada passo e onde entram as verificações humanas."),
-  vid("react-19-o-que-mudou-na-pratica", "React 19 na prática: o que mudou e o que ignorar", "Actions, use(), ref como prop, compilador e o fim de alguns padrões antigos.", "programacao", ["React", "front-end", "JavaScript"], "2026-03-11", "24:05", "Código Direto", ["Actions simplificam formulários e estados de envio.", "use() permite ler promises e contexto de forma condicional.", "forwardRef deixa de ser necessário.", "O compilador reduz a necessidade de useMemo/useCallback manuais."], "Demonstração ao vivo migrando um formulário com estado manual para Actions, seguida de uma revisão do que o compilador otimiza automaticamente e dos casos em que ainda vale memoizar."),
-  vid("juros-compostos-em-10-minutos", "Juros compostos em 10 minutos (com exemplos brasileiros)", "A fórmula, três cenários reais e o erro de comparar taxa mensal com anual.", "financas", ["juros compostos", "investimentos", "educação financeira"], "2026-03-08", "10:22", "Dinheiro Claro", ["O tempo pesa mais que o aporte.", "Taxa mensal × 12 não é taxa anual.", "Dívida de cartão é juros composto contra você.", "Simule antes de decidir."], "Explicação com quadro branco dos três cenários de aporte em idades diferentes e comparação de um financiamento Price com SAC. Termina indicando calculadoras gratuitas para conferir."),
-  vid("design-de-interfaces-menos-e-mais", "Design de interfaces: por que menos é mais (e como fazer)", "Hierarquia tipográfica, espaçamento consistente e cor com propósito. Análise de interfaces reais.", "design", ["UI", "design", "tipografia"], "2026-03-04", "15:30", "Interface Honesta", ["Hierarquia vem de tamanho, peso e espaço — não de cor.", "Um sistema de espaçamento de 4 ou 8 px resolve 90% dos alinhamentos.", "Cor de destaque única e usada com parcimônia.", "Animações de 150–250 ms com propósito."], "Redesenho ao vivo de uma tela de dashboard genérica: remoção de gradientes, definição de escala tipográfica, ajuste de contraste e introdução de um único acento de cor."),
-  vid("seguranca-digital-o-basico-que-ninguem-faz", "Segurança digital: o básico que quase ninguém faz", "Gerenciador de senhas, 2FA e passkeys demonstrados passo a passo em celular e computador.", "seguranca", ["senhas", "2FA", "passkeys"], "2026-02-28", "12:48", "Nexo Explica", ["Senha única por serviço, sem exceção.", "2FA por app, não por SMS.", "Passkeys eliminam phishing.", "Códigos de recuperação impressos."], "Configuração real de um gerenciador de senhas, migração de três contas e ativação de passkey em um serviço de e-mail, com os problemas encontrados no caminho."),
-  vid("como-usar-ia-para-estudar-melhor", "Como usar IA para estudar melhor (sem trapacear a si mesmo)", "Técnicas de recuperação ativa, explicação de Feynman e geração de questões com modelos de linguagem.", "educacao", ["estudos", "IA", "aprendizado"], "2026-02-23", "14:12", "Aprender Rápido", ["Peça perguntas, não respostas.", "Explique o conceito para a IA e peça correções.", "Gere flashcards a partir das suas anotações.", "Use a IA para encontrar lacunas, não para preenchê-las."], "Demonstração de uma sessão de estudo de 40 minutos usando prompts específicos para cada técnica, com os prompts exibidos na tela e disponíveis na central de prompts do Nexo."),
-  vid("automatize-seu-negocio-sem-programar", "Automatize seu pequeno negócio sem programar", "Três automações práticas com ferramentas no-code e blocos de IA: triagem de e-mails, extração de recibos e resumo diário.", "negocios", ["automação", "no-code", "pequenos negócios"], "2026-02-18", "21:35", "Negócio em Dia", ["Comece pela tarefa mais repetitiva.", "Toda automação com IA precisa de amostragem e alerta.", "Nunca conecte diretamente a pagamentos.", "Documente o fluxo para quando quebrar."], "Construção de ponta a ponta das três automações, com os erros que apareceram e como foram tratados. Inclui estimativa de custo mensal."),
-  vid("gerador-de-qr-code-e-outras-utilidades", "5 utilidades do navegador que substituem apps pagos", "QR Code, conversor de unidades, formatador JSON, gerador de senha e cronômetro — tudo gratuito e offline.", "utilidades", ["ferramentas", "utilidades", "gratuito"], "2026-02-12", "08:55", "Nexo Explica", ["Ferramentas web modernas funcionam offline.", "Nada é enviado a servidores.", "Favoritos e histórico ficam no navegador.", "Atalho ⌘K para buscar qualquer ferramenta."], "Tour rápido pelas ferramentas mais usadas do Nexo com casos de uso do dia a dia e demonstração dos favoritos e da busca global."),
+export const videos: Video[] = [
+  v({ slug: "como-funcionam-os-llms-visualmente", title: "Como funcionam os modelos de linguagem — explicação visual", excerpt: "Tokens, atenção e previsão da próxima palavra explicados com animações.", category: "IA", tags: ["llm", "fundamentos"], date: "2026-03-05T09:00:00Z", readTime: 27, cover: "blue", popularity: 93, youtubeId: "wjZofJX0v4M", duration: "27:14", channel: "3Blue1Brown", body: [P("Uma das explicações visuais mais claras sobre transformers e o mecanismo de atenção. Ideal para quem quer entender o que acontece por baixo do chat."), UL(["O que é um token e um embedding.", "Como a atenção relaciona palavras.", "Por que o modelo 'prevê a próxima palavra'."])] }),
+  v({ slug: "introducao-ao-mecanismo-de-atencao", title: "Atenção em transformers, passo a passo", excerpt: "Continuação da série: como a atenção permite contexto de longo alcance.", category: "IA", tags: ["transformers", "atenção"], date: "2026-03-01T09:00:00Z", readTime: 26, cover: "teal", popularity: 80, youtubeId: "eMlx5fFNoYc", duration: "26:10", channel: "3Blue1Brown", body: [P("Aprofundamento no mecanismo de atenção com visualizações matemáticas acessíveis.")] }),
+  v({ slug: "curso-rapido-de-react", title: "React em 100 segundos (e além)", excerpt: "Visão geral rápida de React para quem está começando.", category: "Desenvolvimento", tags: ["react", "front-end"], date: "2026-02-26T09:00:00Z", readTime: 2, cover: "violet", popularity: 75, youtubeId: "Tn6-PIqc4UM", duration: "2:07", channel: "Fireship", body: [P("Resumo veloz do que é React, componentes, estado e por que ele domina o front-end.")] }),
+  v({ slug: "vite-em-100-segundos", title: "Vite em 100 segundos", excerpt: "Por que o Vite é tão rápido e como começar.", category: "Desenvolvimento", tags: ["vite", "build"], date: "2026-02-22T09:00:00Z", readTime: 2, cover: "amber", popularity: 68, youtubeId: "KCrXgy8qtjM", duration: "2:20", channel: "Fireship", body: [P("ESM nativo em dev, Rollup em produção. O vídeo explica a arquitetura em dois minutos.")] }),
+  v({ slug: "tailwind-css-em-100-segundos", title: "Tailwind CSS em 100 segundos", excerpt: "Utility-first CSS explicado com exemplos.", category: "Design", tags: ["tailwind", "css"], date: "2026-02-18T09:00:00Z", readTime: 2, cover: "teal", popularity: 70, youtubeId: "mr15Xzb1Ook", duration: "2:21", channel: "Fireship", body: [P("Introdução direta à filosofia utility-first e quando ela compensa.")] }),
+  v({ slug: "o-que-e-machine-learning", title: "Machine learning explicado de forma simples", excerpt: "Conceitos de aprendizado de máquina sem matemática pesada.", category: "IA", tags: ["machine learning", "fundamentos"], date: "2026-02-14T09:00:00Z", readTime: 3, cover: "green", popularity: 72, youtubeId: "PeMlggyqz0Y", duration: "2:35", channel: "Fireship", body: [P("Supervisionado, não supervisionado e reforço — em linguagem simples.")] }),
+  v({ slug: "redes-neurais-do-zero", title: "Mas o que é uma rede neural?", excerpt: "O clássico: neurônios, camadas e por que redes aprendem.", category: "IA", tags: ["redes neurais", "fundamentos"], date: "2026-02-10T09:00:00Z", readTime: 19, cover: "blue", popularity: 89, youtubeId: "aircAruvnKk", duration: "18:40", channel: "3Blue1Brown", body: [P("Ponto de partida obrigatório para entender deep learning com intuição visual.")] }),
+  v({ slug: "typescript-em-100-segundos", title: "TypeScript em 100 segundos", excerpt: "Tipos, interfaces e por que o TypeScript virou padrão.", category: "Desenvolvimento", tags: ["typescript"], date: "2026-02-06T09:00:00Z", readTime: 2, cover: "ink", popularity: 66, youtubeId: "zQnBQ4tB3ZA", duration: "2:26", channel: "Fireship", body: [P("Resumo do que TypeScript adiciona ao JavaScript e como começar.")] }),
+  v({ slug: "git-e-github-para-iniciantes", title: "Git explicado em 100 segundos", excerpt: "Commits, branches e o fluxo básico de versionamento.", category: "Desenvolvimento", tags: ["git", "github"], date: "2026-02-02T09:00:00Z", readTime: 2, cover: "rose", popularity: 64, youtubeId: "hwP7WQkmECE", duration: "2:20", channel: "Fireship", body: [P("Fundamentos de Git de forma rápida e visual.")] }),
+  v({ slug: "descida-do-gradiente-visual", title: "Descida do gradiente: como redes neurais aprendem", excerpt: "A segunda parte da série sobre redes neurais, focada em treinamento.", category: "IA", tags: ["deep learning", "treinamento"], date: "2026-01-28T09:00:00Z", readTime: 21, cover: "violet", popularity: 77, youtubeId: "IHZwWFHWa-w", duration: "21:00", channel: "3Blue1Brown", body: [P("Função de custo, gradiente e a intuição por trás do aprendizado.")] }),
 ];

@@ -1,7 +1,8 @@
 User-agent: *
 Allow: /
-Disallow: /buscar
+Disallow: /busca
 Disallow: /favoritos
 Disallow: /historico
+Disallow: /prompts/salvos
 
-Sitemap: https://nexo.app/sitemap.xml
+Sitemap: https://nexo-ia.vercel.app/sitemap.xml

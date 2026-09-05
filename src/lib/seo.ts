@@ -1,54 +1,110 @@
 import { useEffect } from "react";
+import { SITE } from "./utils";
 
-export const SITE_NAME = "Nexo";
-export const SITE_URL = "https://nexo.app";
-
-interface SEOOptions {
-  title: string; description: string; path?: string; type?: "website" | "article";
-  keywords?: string[]; publishedAt?: string; noindex?: boolean;
-  breadcrumbs?: { label: string; path: string }[];
+interface SeoInput {
+  title: string;
+  description?: string;
+  path?: string;
+  type?: "website" | "article";
+  jsonLd?: Record<string, unknown> | Record<string, unknown>[];
+  noindex?: boolean;
 }
 
-function upsertMeta(attr: "name" | "property", key: string, content: string) {
-  let el = document.head.querySelector(`meta[${attr}="${key}"]`);
-  if (!el) { el = document.createElement("meta"); el.setAttribute(attr, key); document.head.appendChild(el); }
+function setMeta(attr: "name" | "property", key: string, content: string) {
+  let el = document.head.querySelector<HTMLMetaElement>(`meta[${attr}="${key}"]`);
+  if (!el) {
+    el = document.createElement("meta");
+    el.setAttribute(attr, key);
+    document.head.appendChild(el);
+  }
   el.setAttribute("content", content);
 }
-function upsertLink(rel: string, href: string) {
-  let el = document.head.querySelector(`link[rel="${rel}"]`);
-  if (!el) { el = document.createElement("link"); el.setAttribute("rel", rel); document.head.appendChild(el); }
+
+function setLink(rel: string, href: string) {
+  let el = document.head.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`);
+  if (!el) {
+    el = document.createElement("link");
+    el.setAttribute("rel", rel);
+    document.head.appendChild(el);
+  }
   el.setAttribute("href", href);
 }
-function upsertLd(id: string, data: unknown) {
-  let ld = document.getElementById(id) as HTMLScriptElement | null;
-  if (!ld) { ld = document.createElement("script"); ld.type = "application/ld+json"; ld.id = id; document.head.appendChild(ld); }
-  ld.textContent = JSON.stringify(data);
+
+export function useSeo({ title, description, path, type = "website", jsonLd, noindex }: SeoInput) {
+  useEffect(() => {
+    const full = title.includes(SITE.name) ? title : `${title} · ${SITE.name}`;
+    document.title = full;
+    const desc = description ?? `${title} — ${SITE.tagline}.`;
+    const url = `${SITE.url}${path ?? window.location.pathname}`;
+    setMeta("name", "description", desc);
+    setMeta("name", "robots", noindex ? "noindex, nofollow" : "index, follow, max-image-preview:large");
+    setMeta("property", "og:title", full);
+    setMeta("property", "og:description", desc);
+    setMeta("property", "og:type", type);
+    setMeta("property", "og:url", url);
+    setMeta("name", "twitter:title", full);
+    setMeta("name", "twitter:description", desc);
+    setLink("canonical", url);
+
+    const id = "nexo-jsonld";
+    document.getElementById(id)?.remove();
+    if (jsonLd) {
+      const s = document.createElement("script");
+      s.type = "application/ld+json";
+      s.id = id;
+      s.text = JSON.stringify(jsonLd);
+      document.head.appendChild(s);
+    }
+  }, [title, description, path, type, noindex, JSON.stringify(jsonLd)]);
 }
 
-/** SEO client-side: title, description, OG, canonical, JSON-LD (WebPage/Article + BreadcrumbList). */
-export function useSEO(opts: SEOOptions) {
-  const { title, description, path = "", type = "website", keywords, publishedAt, noindex, breadcrumbs } = opts;
-  const keywordKey = keywords?.join(",") ?? "";
-  const crumbKey = breadcrumbs?.map((b) => b.path).join("|") ?? "";
-  useEffect(() => {
-    const fullTitle = title.includes(SITE_NAME) ? title : `${title} — ${SITE_NAME}`;
-    document.title = fullTitle;
-    const url = `${SITE_URL}${path}`;
-    upsertMeta("name", "description", description);
-    upsertMeta("name", "robots", noindex ? "noindex, nofollow" : "index, follow");
-    if (keywordKey) upsertMeta("name", "keywords", keywordKey.split(",").join(", "));
-    upsertMeta("property", "og:title", fullTitle);
-    upsertMeta("property", "og:description", description);
-    upsertMeta("property", "og:type", type);
-    upsertMeta("property", "og:url", url);
-    upsertMeta("name", "twitter:title", fullTitle);
-    upsertMeta("name", "twitter:description", description);
-    upsertLink("canonical", url);
-    upsertLd("ld-json", type === "article"
-      ? { "@context": "https://schema.org", "@type": "Article", headline: title, description, url, datePublished: publishedAt, publisher: { "@type": "Organization", name: SITE_NAME } }
-      : { "@context": "https://schema.org", "@type": "WebPage", name: fullTitle, description, url });
-    if (breadcrumbs?.length) {
-      upsertLd("ld-breadcrumbs", { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: breadcrumbs.map((b, i) => ({ "@type": "ListItem", position: i + 1, name: b.label, item: `${SITE_URL}${b.path}` })) });
-    }
-  }, [title, description, path, type, keywordKey, publishedAt, noindex, crumbKey]); // eslint-disable-line react-hooks/exhaustive-deps
+export function breadcrumbLd(items: { name: string; path: string }[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((it, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: it.name,
+      item: `${SITE.url}${it.path}`,
+    })),
+  };
+}
+
+export function articleLd(a: { title: string; excerpt: string; date: string; author?: string; path: string }) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: a.title,
+    description: a.excerpt,
+    datePublished: a.date,
+    author: { "@type": "Person", name: a.author ?? SITE.name },
+    publisher: { "@type": "Organization", name: SITE.name },
+    mainEntityOfPage: `${SITE.url}${a.path}`,
+  };
+}
+
+export function faqLd(faq: { q: string; a: string }[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faq.map((f) => ({
+      "@type": "Question",
+      name: f.q,
+      acceptedAnswer: { "@type": "Answer", text: f.a },
+    })),
+  };
+}
+
+export function softwareLd(t: { name: string; description: string; path: string }) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: t.name,
+    description: t.description,
+    applicationCategory: "UtilitiesApplication",
+    operatingSystem: "Web",
+    offers: { "@type": "Offer", price: "0", priceCurrency: "BRL" },
+    url: `${SITE.url}${t.path}`,
+  };
 }

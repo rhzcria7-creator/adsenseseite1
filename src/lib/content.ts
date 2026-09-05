@@ -1,130 +1,188 @@
-import { ARTICLES } from "@/data/articles";
-import { GUIDES, TUTORIALS, VIDEOS } from "@/data/learning";
-import { NEWS } from "@/data/news";
-import { PROMPTS, PROMPT_CATEGORIES } from "@/data/prompts";
-import { TOOLS, TOOL_CATEGORIES } from "@/data/tools";
-import type { Category, ContentItem, ContentKind, SearchDoc } from "./types";
-import { KIND_PATH, normalize, shuffleDaily } from "./utils";
+import type { Article, ContentKind, SearchDoc, Video } from "./types";
+import { news } from "@/data/news";
+import { articles } from "@/data/articles";
+import { tutorials, guides, videos } from "@/data/learning";
+import { tools } from "@/data/tools";
+import { prompts } from "@/data/prompts";
+import { shuffleSeeded, slugify, todayKey, uniq } from "./utils";
 
-export const CATEGORIES: Category[] = [
-  { slug: "inteligencia-artificial", name: "Inteligência Artificial", description: "Modelos, agentes, prompts e aplicações práticas de IA.", kinds: ["news", "article", "tutorial", "guide", "video"] },
-  { slug: "tecnologia", name: "Tecnologia", description: "Infraestrutura, regulação, tendências e impacto da tecnologia.", kinds: ["news"] },
-  { slug: "programacao", name: "Programação", description: "Front-end, TypeScript, arquitetura e ferramentas de desenvolvimento.", kinds: ["news", "article", "tutorial", "guide", "video"] },
-  { slug: "marketing", name: "Marketing", description: "SEO, conteúdo, aquisição e posicionamento.", kinds: ["news", "article", "guide"] },
-  { slug: "negocios", name: "Negócios", description: "Estratégia, custos, produtos e pequenas empresas.", kinds: ["news", "article", "video"] },
-  { slug: "design", name: "Design", description: "Interfaces, tipografia, cores e acessibilidade.", kinds: ["news", "article", "video"] },
-  { slug: "financas", name: "Finanças", description: "Juros, investimentos, dívidas e decisões com números.", kinds: ["article", "tutorial", "guide", "video"] },
-  { slug: "produtividade", name: "Produtividade", description: "Métodos, foco, planejamento e automação pessoal.", kinds: ["news", "article", "tutorial", "guide"] },
-  { slug: "seguranca", name: "Segurança", description: "Senhas, autenticação, privacidade e golpes.", kinds: ["news", "article", "tutorial", "guide", "video"] },
-  { slug: "hardware", name: "Hardware", description: "Chips, dispositivos e computação local.", kinds: ["news"] },
-  { slug: "carreira", name: "Carreira", description: "Habilidades, vagas e mercado de trabalho em tecnologia.", kinds: ["news"] },
-  { slug: "educacao", name: "Educação", description: "Aprendizado, tutores de IA e métodos de estudo.", kinds: ["news", "video"] },
-  { slug: "produto", name: "Produto", description: "Estratégia de produto e decisões de UX.", kinds: ["article"] },
-  { slug: "conteudo", name: "Conteúdo", description: "Escrita, credibilidade e produção editorial.", kinds: ["article"] },
-  { slug: "utilidades", name: "Utilidades", description: "QR Codes, conversões e tarefas práticas.", kinds: ["tutorial", "video"] },
+export type Entry = Article | Video;
+
+export const kindMeta: Record<ContentKind, { label: string; plural: string; base: string }> = {
+  news: { label: "Notícia", plural: "Notícias", base: "/noticias" },
+  blog: { label: "Artigo", plural: "Blog", base: "/blog" },
+  tutorial: { label: "Tutorial", plural: "Tutoriais", base: "/tutoriais" },
+  guide: { label: "Guia", plural: "Guias", base: "/guias" },
+  video: { label: "Vídeo", plural: "Vídeos", base: "/videos" },
+  tool: { label: "Ferramenta", plural: "Ferramentas", base: "/ferramentas" },
+  prompt: { label: "Prompt", plural: "Prompts", base: "/prompts" },
+};
+
+export const collections: Record<"news" | "blog" | "tutorial" | "guide" | "video", Entry[]> = {
+  news,
+  blog: articles,
+  tutorial: tutorials,
+  guide: guides,
+  video: videos,
+};
+
+export const allEntries: Entry[] = [...news, ...articles, ...tutorials, ...guides, ...videos];
+
+export const entryPath = (e: Entry) => `${kindMeta[e.kind].base}/${e.slug}`;
+
+export function getEntry(kind: Entry["kind"], slug: string): Entry | undefined {
+  return collections[kind].find((e) => e.slug === slug);
+}
+
+export function sortByDate<T extends { date: string }>(arr: T[]) {
+  return [...arr].sort((a, b) => +new Date(b.date) - +new Date(a.date));
+}
+export function sortByPopularity<T extends { popularity: number }>(arr: T[]) {
+  return [...arr].sort((a, b) => b.popularity - a.popularity);
+}
+
+/* ---------- Categories & tags ---------- */
+export function categoriesOf(kind: Entry["kind"]) {
+  const map = new Map<string, { name: string; slug: string; count: number }>();
+  for (const e of collections[kind]) {
+    const s = slugify(e.category);
+    const cur = map.get(s);
+    if (cur) cur.count++;
+    else map.set(s, { name: e.category, slug: s, count: 1 });
+  }
+  return Array.from(map.values()).sort((a, b) => b.count - a.count);
+}
+
+export function allTags() {
+  const map = new Map<string, number>();
+  for (const e of allEntries) for (const t of e.tags) map.set(t, (map.get(t) ?? 0) + 1);
+  for (const t of tools) for (const tag of t.tags) map.set(tag, (map.get(tag) ?? 0) + 1);
+  for (const p of prompts) for (const tag of p.tags) map.set(tag, (map.get(tag) ?? 0) + 1);
+  return Array.from(map.entries())
+    .map(([name, count]) => ({ name, slug: slugify(name), count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+export function byTag(tagSlug: string) {
+  const match = (tags: string[]) => tags.some((t) => slugify(t) === tagSlug);
+  return {
+    entries: allEntries.filter((e) => match(e.tags)),
+    tools: tools.filter((t) => match(t.tags)),
+    prompts: prompts.filter((p) => match(p.tags)),
+  };
+}
+
+/* ---------- Search ---------- */
+export const searchDocs: SearchDoc[] = [
+  ...allEntries.map<SearchDoc>((e) => ({ id: `${e.kind}:${e.slug}`, kind: e.kind, title: e.title, excerpt: e.excerpt, path: entryPath(e), tags: e.tags, category: e.category, popularity: e.popularity, date: e.date })),
+  ...tools.map<SearchDoc>((t) => ({ id: `tool:${t.slug}`, kind: "tool", title: t.name, excerpt: t.short, path: `/ferramentas/${t.slug}`, tags: t.tags, category: t.category, popularity: t.popularity })),
+  ...prompts.map<SearchDoc>((p) => ({ id: `prompt:${p.slug}`, kind: "prompt", title: p.title, excerpt: p.description, path: `/prompts/${p.slug}`, tags: p.tags, category: p.category, popularity: p.popularity })),
 ];
 
-export const categoryBySlug = (slug: string) => CATEGORIES.find((c) => c.slug === slug);
-export const categoryName = (slug: string) => categoryBySlug(slug)?.name ?? TOOL_CATEGORIES.find((c) => c.slug === slug)?.name ?? PROMPT_CATEGORIES.find((c) => c.slug === slug)?.name ?? slug;
+const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
-export const ALL_CONTENT: ContentItem[] = [...NEWS, ...ARTICLES, ...TUTORIALS, ...GUIDES, ...VIDEOS].sort((a, b) => +new Date(b.publishedAt) - +new Date(a.publishedAt));
-export const contentByKind = (kind: ContentKind) => ALL_CONTENT.filter((c) => c.kind === kind);
-export const contentByCategory = (slug: string) => ALL_CONTENT.filter((c) => c.category === slug);
-export const contentPath = (c: ContentItem) => `${KIND_PATH[c.kind]}/${c.slug}`;
-export const findContent = (kind: ContentKind, slug: string) => ALL_CONTENT.find((c) => c.kind === kind && c.slug === slug);
-
-export interface TagInfo { tag: string; slug: string; count: number }
-export const tagSlug = (tag: string) => normalize(tag).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-export const ALL_TAGS: TagInfo[] = (() => {
-  const map = new Map<string, TagInfo>();
-  const add = (tag: string) => { const slug = tagSlug(tag); const cur = map.get(slug); if (cur) cur.count++; else map.set(slug, { tag, slug, count: 1 }); };
-  ALL_CONTENT.forEach((c) => c.tags.forEach(add));
-  TOOLS.forEach((t) => t.tags.forEach(add));
-  PROMPTS.forEach((p) => p.tags.forEach(add));
-  return [...map.values()].sort((a, b) => b.count - a.count);
-})();
-export const tagBySlug = (slug: string) => ALL_TAGS.find((t) => t.slug === slug);
-export function itemsByTagSlug(slug: string) {
-  const match = (tags: string[]) => tags.some((t) => tagSlug(t) === slug);
-  return { content: ALL_CONTENT.filter((c) => match(c.tags)), tools: TOOLS.filter((t) => match(t.tags)), prompts: PROMPTS.filter((p) => match(p.tags)) };
-}
-
-export function relatedContent(item: ContentItem, limit = 4): ContentItem[] {
-  const tags = new Set(item.tags.map(normalize));
-  return ALL_CONTENT.filter((c) => c.slug !== item.slug)
-    .map((c) => ({ c, score: (c.category === item.category ? 2 : 0) + c.tags.filter((t) => tags.has(normalize(t))).length + (c.kind === item.kind ? 0.5 : 0) }))
-    .filter((x) => x.score > 0).sort((a, b) => b.score - a.score).slice(0, limit).map((x) => x.c);
-}
-
-/** Rotação editorial determinística por dia (sem rede). */
-export function rotation<T>(items: T[], n: number): T[] { return shuffleDaily(items).slice(0, n); }
-
-/** "Popularidade" simulada de forma estável: hash do slug + peso de destaque. */
-function stableScore(s: string) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h % 1000; }
-export function popular<T extends { slug: string; featured?: boolean }>(items: T[], n: number): T[] {
-  return [...items].sort((a, b) => (stableScore(b.slug) + (b.featured ? 600 : 0)) - (stableScore(a.slug) + (a.featured ? 600 : 0))).slice(0, n);
-}
-export function trending(n = 6): SearchDoc[] {
-  const day = new Date().getDate();
-  return [...SEARCH_INDEX].sort((a, b) => ((stableScore(b.id) + day * 37) % 1000) - ((stableScore(a.id) + day * 37) % 1000)).slice(0, n);
-}
-
-export const SEARCH_INDEX: SearchDoc[] = [
-  ...TOOLS.map<SearchDoc>((t) => ({ id: `tool:${t.slug}`, kind: "tool", title: t.name, description: t.short, path: `/ferramentas/${t.slug}`, tags: t.tags, category: t.category, haystack: normalize([t.name, t.short, t.description, ...t.tags, ...(t.keywords ?? []), t.category].join(" ")) })),
-  ...ALL_CONTENT.map<SearchDoc>((c) => ({ id: `${c.kind}:${c.slug}`, kind: c.kind, title: c.title, description: c.excerpt, path: contentPath(c), tags: c.tags, category: c.category, date: c.publishedAt, haystack: normalize([c.title, c.excerpt, ...c.tags, c.category, c.author].join(" ")) })),
-  ...PROMPTS.map<SearchDoc>((p) => ({ id: `prompt:${p.slug}`, kind: "prompt", title: p.title, description: p.description, path: `/prompts/${p.slug}`, tags: p.tags, category: p.category, haystack: normalize([p.title, p.description, ...p.tags, p.category, ...p.platform].join(" ")) })),
-];
-
-export interface SearchOptions { kinds?: ContentKind[]; limit?: number }
-export function search(query: string, opts: SearchOptions = {}): SearchDoc[] {
-  const q = normalize(query.trim());
+export function search(query: string, opts: { kinds?: ContentKind[]; limit?: number } = {}) {
+  const q = norm(query.trim());
   if (!q) return [];
   const terms = q.split(/\s+/).filter(Boolean);
-  const { kinds, limit = 30 } = opts;
-  return SEARCH_INDEX.filter((d) => !kinds || kinds.includes(d.kind))
+  const scored = searchDocs
+    .filter((d) => !opts.kinds || opts.kinds.includes(d.kind))
     .map((d) => {
-      let score = 0; const title = normalize(d.title);
-      for (const term of terms) {
-        if (title === term) score += 12; else if (title.startsWith(term)) score += 8; else if (title.includes(term)) score += 5;
-        else if (d.tags.some((t) => normalize(t).includes(term))) score += 3; else if (d.haystack.includes(term)) score += 1; else return { d, score: 0 };
+      const title = norm(d.title);
+      const excerpt = norm(d.excerpt);
+      const tags = norm(d.tags.join(" "));
+      const cat = norm(d.category);
+      let score = 0;
+      for (const t of terms) {
+        if (title === t) score += 50;
+        if (title.startsWith(t)) score += 20;
+        if (title.includes(t)) score += 12;
+        if (tags.includes(t)) score += 8;
+        if (cat.includes(t)) score += 5;
+        if (excerpt.includes(t)) score += 3;
       }
-      if (d.kind === "tool") score += 0.5;
-      return { d, score };
-    }).filter((x) => x.score > 0).sort((a, b) => b.score - a.score).slice(0, limit).map((x) => x.d);
-}
-export const suggest = (query: string, limit = 8) => search(query, { limit });
-
-/** Recomendações a partir de histórico + favoritos (tags e categorias em comum). */
-export function recommend(seedIds: string[], limit = 6): SearchDoc[] {
-  const seeds = SEARCH_INDEX.filter((d) => seedIds.includes(d.id));
-  if (!seeds.length) return rotation(SEARCH_INDEX.filter((d) => d.kind === "tool" || d.kind === "article"), limit);
-  const tagW = new Map<string, number>(); const cats = new Map<string, number>();
-  seeds.forEach((s) => { s.tags.forEach((t) => tagW.set(normalize(t), (tagW.get(normalize(t)) ?? 0) + 1)); cats.set(s.category, (cats.get(s.category) ?? 0) + 1); });
-  return SEARCH_INDEX.filter((d) => !seedIds.includes(d.id))
-    .map((d) => ({ d, score: d.tags.reduce((acc, t) => acc + (tagW.get(normalize(t)) ?? 0), 0) * 2 + (cats.get(d.category) ?? 0) }))
-    .filter((x) => x.score > 0).sort((a, b) => b.score - a.score).slice(0, limit).map((x) => x.d);
+      if (score > 0) score += d.popularity / 25;
+      return { doc: d, score };
+    })
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score);
+  return scored.slice(0, opts.limit ?? 40).map((x) => x.doc);
 }
 
-export function allRoutes(): { path: string; label: string; group: string }[] {
-  const r: { path: string; label: string; group: string }[] = [
-    { path: "/", label: "Início", group: "Principal" }, { path: "/ferramentas", label: "Ferramentas", group: "Principal" }, { path: "/prompts", label: "Central de prompts", group: "Principal" },
-    { path: "/prompts/builder", label: "Prompt Builder", group: "Principal" }, { path: "/noticias", label: "Notícias", group: "Principal" }, { path: "/blog", label: "Blog", group: "Principal" },
-    { path: "/tutoriais", label: "Tutoriais", group: "Principal" }, { path: "/guias", label: "Guias", group: "Principal" }, { path: "/videos", label: "Vídeos", group: "Principal" },
-    { path: "/categorias", label: "Categorias", group: "Principal" }, { path: "/tags", label: "Tags", group: "Principal" }, { path: "/buscar", label: "Busca", group: "Utilitárias" },
-    { path: "/favoritos", label: "Favoritos", group: "Utilitárias" }, { path: "/historico", label: "Histórico", group: "Utilitárias" }, { path: "/sobre", label: "Sobre", group: "Utilitárias" },
-    { path: "/contato", label: "Contato", group: "Utilitárias" }, { path: "/privacidade", label: "Privacidade", group: "Utilitárias" }, { path: "/termos", label: "Termos de uso", group: "Utilitárias" },
-    { path: "/anuncios", label: "Publicidade", group: "Utilitárias" }, { path: "/sitemap", label: "Mapa do site", group: "Utilitárias" },
-  ];
-  TOOL_CATEGORIES.forEach((c) => r.push({ path: `/ferramentas/categoria/${c.slug}`, label: c.name, group: "Categorias de ferramentas" }));
-  TOOLS.forEach((t) => r.push({ path: `/ferramentas/${t.slug}`, label: t.name, group: "Ferramentas" }));
-  PROMPT_CATEGORIES.forEach((c) => r.push({ path: `/prompts/categoria/${c.slug}`, label: c.name, group: "Categorias de prompts" }));
-  PROMPTS.forEach((p) => r.push({ path: `/prompts/${p.slug}`, label: p.title, group: "Prompts" }));
-  NEWS.forEach((c) => r.push({ path: `/noticias/${c.slug}`, label: c.title, group: "Notícias" }));
-  ARTICLES.forEach((c) => r.push({ path: `/blog/${c.slug}`, label: c.title, group: "Blog" }));
-  TUTORIALS.forEach((c) => r.push({ path: `/tutoriais/${c.slug}`, label: c.title, group: "Tutoriais" }));
-  GUIDES.forEach((c) => r.push({ path: `/guias/${c.slug}`, label: c.title, group: "Guias" }));
-  VIDEOS.forEach((c) => r.push({ path: `/videos/${c.slug}`, label: c.title, group: "Vídeos" }));
-  CATEGORIES.forEach((c) => r.push({ path: `/categorias/${c.slug}`, label: c.name, group: "Categorias" }));
-  ALL_TAGS.forEach((t) => r.push({ path: `/tags/${t.slug}`, label: `#${t.tag}`, group: "Tags" }));
-  return r;
+/* ---------- Related & recommendations ---------- */
+export function relatedEntries(e: Entry, n = 4): Entry[] {
+  const tags = new Set(e.tags);
+  return allEntries
+    .filter((x) => x.slug !== e.slug)
+    .map((x) => {
+      let s = 0;
+      for (const t of x.tags) if (tags.has(t)) s += 3;
+      if (x.category === e.category) s += 2;
+      if (x.kind === e.kind) s += 1;
+      return { x, s: s + x.popularity / 100 };
+    })
+    .filter((r) => r.s > 1)
+    .sort((a, b) => b.s - a.s)
+    .slice(0, n)
+    .map((r) => r.x);
 }
+
+export function relatedDocsForTags(tags: string[], excludeId: string, n = 4): SearchDoc[] {
+  const set = new Set(tags.map(norm));
+  return searchDocs
+    .filter((d) => d.id !== excludeId)
+    .map((d) => ({ d, s: d.tags.reduce((acc, t) => acc + (set.has(norm(t)) ? 1 : 0), 0) + d.popularity / 200 }))
+    .filter((r) => r.s >= 1)
+    .sort((a, b) => b.s - a.s)
+    .slice(0, n)
+    .map((r) => r.d);
+}
+
+/* ---------- Rotations (deterministic per day) ---------- */
+export function featured(n = 5): Entry[] {
+  const pool = sortByPopularity(allEntries).slice(0, 14);
+  return shuffleSeeded(pool, `featured:${todayKey()}`).slice(0, n);
+}
+export function trending(n = 8): SearchDoc[] {
+  const pool = [...searchDocs].sort((a, b) => b.popularity - a.popularity).slice(0, 30);
+  return shuffleSeeded(pool, `trending:${todayKey()}`).slice(0, n);
+}
+export function recent(n = 8): Entry[] {
+  return sortByDate(allEntries).slice(0, n);
+}
+export function popular(n = 8): Entry[] {
+  return sortByPopularity(allEntries).slice(0, n);
+}
+export function popularTools(n = 8) {
+  return [...tools].sort((a, b) => b.popularity - a.popularity).slice(0, n);
+}
+export function toolOfTheDay() {
+  const pool = [...tools].sort((a, b) => b.popularity - a.popularity).slice(0, 20);
+  return shuffleSeeded(pool, `tool:${todayKey()}`)[0];
+}
+export function promptOfTheDay() {
+  const pool = [...prompts].sort((a, b) => b.popularity - a.popularity).slice(0, 20);
+  return shuffleSeeded(pool, `prompt:${todayKey()}`)[0];
+}
+
+/** Recommendations based on the user's local history/favorites tags. */
+export function recommendFor(seedTags: string[], excludeIds: string[], n = 6): SearchDoc[] {
+  if (seedTags.length === 0) return trending(n);
+  const counts = new Map<string, number>();
+  for (const t of seedTags) counts.set(norm(t), (counts.get(norm(t)) ?? 0) + 1);
+  const ex = new Set(excludeIds);
+  return searchDocs
+    .filter((d) => !ex.has(d.id))
+    .map((d) => ({ d, s: d.tags.reduce((a, t) => a + (counts.get(norm(t)) ?? 0), 0) + d.popularity / 150 }))
+    .filter((r) => r.s > 0.7)
+    .sort((a, b) => b.s - a.s)
+    .slice(0, n)
+    .map((r) => r.d);
+}
+
+export const stats = {
+  tools: tools.length,
+  prompts: prompts.length,
+  articles: allEntries.length,
+  tags: uniq([...allEntries.flatMap((e) => e.tags), ...tools.flatMap((t) => t.tags)]).length,
+};

@@ -1,72 +1,123 @@
 export { cn } from "@/utils/cn";
 
-export function slugify(input: string): string {
-  return input.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().replace(/[^a-z0-9\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "");
+export const SITE = {
+  name: "Nexo",
+  tagline: "IA, tecnologia e ferramentas para quem constrói o futuro",
+  url: "https://nexo-ia.vercel.app",
+  adsenseClient: "ca-pub-6438481907721951",
+  email: "contato@nexo.app",
+};
+
+export function slugify(s: string) {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
 }
-export function normalize(input: string): string {
-  return input.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+export function formatDate(iso: string, opts: Intl.DateTimeFormatOptions = { day: "2-digit", month: "short", year: "numeric" }) {
+  try {
+    return new Intl.DateTimeFormat("pt-BR", opts).format(new Date(iso));
+  } catch {
+    return iso;
+  }
 }
-export function formatDate(iso: string, opts: Intl.DateTimeFormatOptions = { day: "2-digit", month: "short", year: "numeric" }): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return new Intl.DateTimeFormat("pt-BR", opts).format(d);
-}
-export function relativeDate(iso: string): string {
+
+export function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
-  const min = Math.round(diff / 60000);
-  if (min < 1) return "agora";
-  if (min < 60) return `há ${min} min`;
-  const h = Math.round(min / 60);
-  if (h < 24) return `há ${h} h`;
-  const days = Math.round(h / 24);
-  if (days < 30) return `há ${days} d`;
-  const months = Math.round(days / 30);
-  if (months < 12) return `há ${months} m`;
-  return `há ${Math.round(months / 12)} a`;
+  const m = Math.floor(diff / 60000);
+  if (m < 60) return `${Math.max(1, m)} min atrás`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} h atrás`;
+  const d = Math.floor(h / 24);
+  if (d < 30) return `${d} d atrás`;
+  return formatDate(iso);
 }
-export function formatNumber(n: number, digits = 2): string {
-  if (!Number.isFinite(n)) return "—";
-  return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: digits, minimumFractionDigits: 0 }).format(n);
-}
-export function formatCurrency(n: number, currency = "BRL"): string {
-  if (!Number.isFinite(n)) return "—";
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency }).format(n);
-}
+
+export const fmtBRL = (n: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
+export const fmtNum = (n: number, d = 2) => new Intl.NumberFormat("pt-BR", { maximumFractionDigits: d }).format(n);
+export const fmtPct = (n: number, d = 2) => `${fmtNum(n, d)}%`;
+
 export function parseNum(v: string | number): number {
   if (typeof v === "number") return v;
-  const s = v.trim().replace(/\s/g, "");
-  if (!s) return NaN;
-  const hasComma = s.includes(","), hasDot = s.includes(".");
-  let normalized = s;
-  if (hasComma && hasDot) normalized = s.lastIndexOf(",") > s.lastIndexOf(".") ? s.replace(/\./g, "").replace(",", ".") : s.replace(/,/g, "");
-  else if (hasComma) normalized = s.replace(",", ".");
-  return Number(normalized);
+  const raw = String(v).trim();
+  const s = raw.includes(",") ? raw.replace(/\./g, "").replace(",", ".") : raw;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : NaN;
 }
-export const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
 
-export function pick<T>(arr: T[], n: number, seed = Date.now()): T[] {
-  const copy = [...arr];
-  let s = (seed % 2147483647) || 1;
-  const rand = () => (s = (s * 16807) % 2147483647) / 2147483647;
-  for (let i = copy.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [copy[i], copy[j]] = [copy[j], copy[i]]; }
-  return copy.slice(0, n);
+/** Deterministic pseudo-random based on a string seed (used for daily rotations). */
+export function seeded(seed: string) {
+  let h = 1779033703 ^ seed.length;
+  for (let i = 0; i < seed.length; i++) {
+    h = Math.imul(h ^ seed.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  return () => {
+    h = Math.imul(h ^ (h >>> 16), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    h ^= h >>> 16;
+    return (h >>> 0) / 4294967296;
+  };
 }
-export function daySeed(): number { const d = new Date(); return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate(); }
-export function shuffleDaily<T>(arr: T[]): T[] { return pick(arr, arr.length, daySeed()); }
 
-export async function copyToClipboard(text: string): Promise<boolean> {
+export function shuffleSeeded<T>(arr: T[], seed: string): T[] {
+  const rnd = seeded(seed);
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+export const todayKey = () => new Date().toISOString().slice(0, 10);
+
+export function uniq<T>(arr: T[]) {
+  return Array.from(new Set(arr));
+}
+
+export function clamp(n: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, n));
+}
+
+export async function copyText(text: string) {
   try {
-    if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return true; }
-    const ta = document.createElement("textarea"); ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
-    document.body.appendChild(ta); ta.select(); const ok = document.execCommand("copy"); document.body.removeChild(ta); return ok;
-  } catch { return false; }
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  }
 }
-export function downloadText(filename: string, text: string, type = "text/plain") {
-  const blob = new Blob([text], { type }); const url = URL.createObjectURL(blob);
-  const a = document.createElement("a"); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
-}
-export function readingTime(text: string): number { const w = text.trim().split(/\s+/).filter(Boolean).length; return Math.max(1, Math.round(w / 200)); }
-export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
-export const KIND_LABEL: Record<string, string> = { tool: "Ferramenta", news: "Notícia", article: "Artigo", tutorial: "Tutorial", guide: "Guia", video: "Vídeo", prompt: "Prompt" };
-export const KIND_PATH: Record<string, string> = { tool: "/ferramentas", news: "/noticias", article: "/blog", tutorial: "/tutoriais", guide: "/guias", video: "/videos", prompt: "/prompts" };
+export function downloadText(filename: string, content: string, mime = "text/plain") {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export const gradients: Record<string, string> = {
+  ink: "from-slate-900 via-slate-800 to-slate-700",
+  blue: "from-blue-700 via-indigo-700 to-slate-900",
+  teal: "from-teal-700 via-cyan-800 to-slate-900",
+  amber: "from-amber-600 via-orange-700 to-slate-900",
+  rose: "from-rose-700 via-pink-800 to-slate-900",
+  violet: "from-violet-700 via-purple-800 to-slate-900",
+  green: "from-emerald-700 via-green-800 to-slate-900",
+};
+
+export function coverClass(key?: string) {
+  return gradients[key ?? "ink"] ?? gradients.ink;
+}

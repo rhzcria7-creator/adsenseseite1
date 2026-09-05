@@ -1,8 +1,46 @@
-export type ContentKind = "tool" | "news" | "article" | "tutorial" | "guide" | "video" | "prompt";
+export type ContentKind = "news" | "blog" | "tutorial" | "guide" | "video" | "tool" | "prompt";
 
-export type ToolCategory = "calculadoras" | "datas" | "conversores" | "texto" | "geradores" | "ia" | "produtividade";
+export type Block =
+  | { type: "p"; text: string }
+  | { type: "h2"; text: string }
+  | { type: "h3"; text: string }
+  | { type: "ul"; items: string[] }
+  | { type: "ol"; items: string[] }
+  | { type: "quote"; text: string }
+  | { type: "code"; lang?: string; code: string }
+  | { type: "callout"; tone?: "info" | "tip" | "warn"; text: string }
+  | { type: "ad" };
 
-export interface FAQItem { q: string; a: string }
+export interface BaseEntry {
+  slug: string;
+  title: string;
+  excerpt: string;
+  category: string;
+  tags: string[];
+  date: string; // ISO
+  readTime: number; // minutes
+  author?: string;
+  cover?: string; // gradient key or url
+  popularity: number; // 0-100
+}
+
+export interface Article extends BaseEntry {
+  kind: "news" | "blog" | "tutorial" | "guide";
+  level?: "iniciante" | "intermediário" | "avançado";
+  body: Block[];
+}
+
+export interface Video extends BaseEntry {
+  kind: "video";
+  youtubeId: string;
+  duration: string;
+  channel: string;
+  body: Block[];
+}
+
+export type ToolCategory = "calculadoras" | "conversores" | "texto" | "geradores" | "ia" | "produtividade" | "datas";
+
+export interface ToolFaq { q: string; a: string }
 
 export interface ToolMeta {
   slug: string;
@@ -11,85 +49,38 @@ export interface ToolMeta {
   description: string;
   category: ToolCategory;
   tags: string[];
-  keywords?: string[];
-  howItWorks: string;
+  icon: string; // lucide icon name
+  popularity: number;
+  howTo: string[];
   examples: string[];
-  faq: FAQItem[];
+  faq: ToolFaq[];
   related: string[];
-  featured?: boolean;
-  isNew?: boolean;
+  seoTitle?: string;
 }
 
-export interface ContentBlock {
-  type: "p" | "h2" | "h3" | "ul" | "ol" | "quote" | "code" | "callout" | "table";
-  text?: string;
-  items?: string[];
-  lang?: string;
-  rows?: string[][];
-}
+export type PromptCategory =
+  | "ia" | "marketing" | "vendas" | "programacao" | "negocios" | "imagens" | "videos" | "estudos" | "produtividade" | "conteudo";
 
-export interface BaseContent {
-  slug: string;
-  title: string;
-  excerpt: string;
-  category: string;
-  tags: string[];
-  author: string;
-  publishedAt: string;
-  readingTime: number;
-  body: ContentBlock[];
-  featured?: boolean;
-  cover?: string;
-  source?: { name: string; url?: string };
-}
-
-export interface NewsItem extends BaseContent { kind: "news" }
-export interface ArticleItem extends BaseContent { kind: "article" }
-export interface TutorialItem extends BaseContent {
-  kind: "tutorial";
-  level: "iniciante" | "intermediário" | "avançado";
-  steps: { title: string; text: string; code?: string; lang?: string }[];
-  toolsUsed?: string[];
-}
-export interface GuideItem extends BaseContent {
-  kind: "guide";
-  chapters: { title: string; summary: string; body: ContentBlock[] }[];
-}
-export interface VideoItem extends BaseContent {
-  kind: "video";
-  duration: string;
-  channel: string;
-  youtubeId?: string;
-  keyPoints: string[];
-  transcriptSummary: string;
-}
-
-export type ContentItem = NewsItem | ArticleItem | TutorialItem | GuideItem | VideoItem;
-
-export type PromptCategory = "ia" | "marketing" | "vendas" | "negocios" | "programacao" | "imagens" | "videos" | "estudos" | "produtividade" | "conteudo";
-
-export interface PromptItem {
+export interface PromptTemplate {
   slug: string;
   title: string;
   category: PromptCategory;
   description: string;
-  prompt: string;
-  variables: string[];
   tags: string[];
-  platform: string[];
-  difficulty: "básico" | "intermediário" | "avançado";
+  variables: string[]; // placeholders like {produto}
+  template: string;
+  popularity: number;
+  platform?: string;
 }
 
 export interface SearchDoc {
   id: string;
   kind: ContentKind;
   title: string;
-  description: string;
+  excerpt: string;
   path: string;
   tags: string[];
   category: string;
+  popularity: number;
   date?: string;
-  haystack: string;
 }
-
-export interface Category { slug: string; name: string; description: string; kinds: ContentKind[] }

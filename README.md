@@ -1,72 +1,91 @@
-# Nexo — IA, tecnologia, ferramentas e prompts
+# Nexo — IA, Tecnologia, Ferramentas e Prompts
 
-Plataforma **100% front-end** (React 19 + TypeScript + Vite 7 + Tailwind CSS v4 + Framer Motion + React Router 7). Sem backend, banco ou login.
-
-- **116 ferramentas funcionais** — `src/tools/*` (32 calculadoras, 8 de datas, 23 conversores, 15 de texto, 17 geradores, 12 de IA, 9 de produtividade)
-- **Central de prompts**: 45 templates com variáveis, filtros, favoritos, histórico e **Prompt Builder** com presets — `src/pages/PromptPages.tsx`
-- **Conteúdo editorial local**: 14 notícias, 12 artigos, 8 tutoriais, 6 guias (com capítulos), 8 vídeos — `src/data/*`
-- Busca global (⌘K / `/`) com autocomplete, categorias, tags, favoritos, histórico, recomendações e rotação diária de destaques — `src/lib/content.ts`
-- Dark/light mode sem flash, transições de página, reveal, skeletons, toasts, accordions, fundo animado em canvas (pausa em aba oculta, respeita `prefers-reduced-motion`)
-- SEO client-side: title, description, canonical, Open Graph, JSON-LD (WebPage/Article + BreadcrumbList), `robots.txt`, `sitemap.xml`, `/sitemap`
-- **AdSense** configurado — `index.html` (script único) + `src/components/ui/monetization.tsx`
-
-> 300+ rotas geradas a partir dos dados locais (veja `/sitemap`).
-
-## Rodar
-
-```bash
-npm install
-npm run dev
-npm run build && npm run preview
-```
+Plataforma **100% front-end** (React 19 + TypeScript + Vite 7 + Tailwind CSS v4 + Framer Motion + React Router 7). Sem backend, banco ou login. Todo processamento (ferramentas, favoritos, histórico, prompts) acontece no navegador.
 
 ## Estrutura
 
 ```
+index.html                  meta tags, fontes, script AdSense (carregado 1× de forma assíncrona), anti-flash de tema
+vercel.json                 rewrites SPA + VITE_ROUTER=browser + headers de cache/segurança
+public/                     robots.txt, sitemap.xml (~230 URLs), ads.txt
+scripts/generate-sitemap.mjs  regenera public/sitemap.xml a partir de src/data
 src/
-  App.tsx                 rotas, transições, error boundary, Hash/BrowserRouter
-  lib/                    types, utils, store (localStorage "nexo:*"), seo, content (busca/tags/recomendação)
-  data/                   tools.ts, prompts.ts, news.ts, articles.ts, learning.ts
-  components/ui/          primitives, motion (React Bits-like), feedback (toasts/copy/fav), monetization (AdSense)
-  components/layout/      Shell (header, menu mobile, footer, breadcrumbs), SearchCommand (⌘K)
-  components/content/     Cards, Body (renderizador de blocos)
-  tools/                  ToolShell (FormulaTool/TextTool/TemplateTool), calculators, converters, text, generators, ai, productivity, registry
-  pages/                  Home, ToolPages, ContentPages, PromptPages, DiscoverPages, StaticPages
-public/                   robots.txt, sitemap.xml, ads.txt
-scripts/generate-sitemap.mjs   regenera o sitemap a partir dos dados
+  App.tsx                   rotas (HashRouter por padrão; BrowserRouter na Vercel), transições, error boundary, scroll restore
+  index.css                 tokens de tema (light/dark via .dark), tipografia, utilitários, animações
+  lib/
+    types.ts                tipos de conteúdo, ferramentas, prompts e busca
+    utils.ts                formatação pt-BR, slugify, seeded shuffle (rotação diária), clipboard, download
+    store.ts                localStorage "nexo:*" (tema, favoritos, histórico, prompts salvos, uso de ferramentas, tarefas, notas)
+    seo.ts                  useSeo (title/description/OG/canonical/robots) + JSON-LD (Article, FAQPage, BreadcrumbList, SoftwareApplication)
+    content.ts              índice unificado, busca com ranking, tags, relacionados, recomendações e rotações (destaques/tendências/recentes/populares)
+  data/
+    tools.ts                catálogo de 75 ferramentas (descrição, como usar, exemplos, FAQ, relacionadas)
+    prompts.ts              48 templates de prompts em 10 categorias + opções e presets do Prompt Builder
+    news.ts                 12 notícias   |  articles.ts  12 artigos de blog
+    learning.ts             8 tutoriais, 7 guias, 10 vídeos
+  components/
+    ui/primitives.tsx       Button, Input, Select, Textarea, Switch, Range, Badge, Chip, Tabs (animado), Accordion, Skeleton, Empty, Stat…
+    ui/motion.tsx           Reveal, Stagger, SplitText, CountUp, SpotlightCard, Tilt, AnimatedBackground, PageTransition, Pop (estilo React Bits)
+    ui/feedback.tsx         ToastProvider/useToast, CopyButton, FavoriteButton
+    ui/monetization.tsx     AdSlot, AdBanner, AdInArticle, AdSidebar, AdMobile
+    layout/Shell.tsx        Header (progress bar, menu mobile, tema), Footer, Breadcrumbs, PageHeader
+    layout/SearchCommand.tsx  busca ⌘K com navegação por teclado
+    content/Cards.tsx       ContentCard (4 variantes), ToolCard, PromptCard, DocRow
+    content/Body.tsx        renderizador de blocos (p/h2/h3/listas/quote/code/callout/ad) com markdown inline
+  tools/
+    ToolShell.tsx           ToolLayout (SEO, breadcrumbs, como usar, exemplos, FAQ, relacionadas, ads) + FormulaTool + TextTool genéricos
+    calculators.tsx         19 calculadoras + 6 ferramentas de datas
+    converters.tsx          17 conversores/codificadores (unidades, bases, cores, JSON, Base64, URL, timestamp…)
+    text.tsx                13 ferramentas de texto
+    generators.tsx          senha (entropia), QR Code (PNG), UUID, hash (Web Crypto), paleta, sorteador, aleatório, username
+    ai.tsx                  tokens/custo, resumidor extrativo, títulos, hashtags, bio, legibilidade (Flesch PT), tom, entrevista
+    productivity.tsx        Pomodoro, cronômetro, tarefas, notas, tempo de leitura, roda de decisão
+    promptBuilder.tsx       Prompt Builder (objetivo+contexto+público+tom+formato+plataforma+detalhe+resultado) com presets e histórico
+    registry.tsx            slug → componente
+  pages/                    Home, ToolPages, ContentPages, PromptPages, DiscoverPages (busca, favoritos, histórico, tendências, tags), StaticPages
 ```
 
-## Adicionar uma ferramenta
+## Rotas (≈ 230 páginas funcionais)
 
-1. Adicione o metadado em `src/data/tools.ts` (nome, descrição, exemplos, FAQ, relacionadas).
-2. Calculadora simples: adicione uma entrada em `CALC_CONFIGS` (`src/tools/calculators.tsx`).
-   Ferramenta custom: crie o componente e registre em `src/tools/registry.tsx`.
-3. Rode `node scripts/generate-sitemap.mjs`.
-
-## Roteamento
-
-- Padrão: `HashRouter` (funciona em qualquer host estático / preview single-file).
-- Na Vercel, `vercel.json` define `VITE_ROUTER=browser` + rewrites → URLs limpas (`/ferramentas/porcentagem`).
+| Rota | Conteúdo |
+|---|---|
+| `/` | Home: hero com busca, stats animadas, destaques rotativos, ferramentas, ferramenta/prompt do dia, notícias, em alta, recentes, prompts, aprenda, recomendações locais |
+| `/ferramentas`, `/ferramentas/categoria/:cat`, `/ferramentas/:slug` | 75 ferramentas em 7 categorias |
+| `/prompts`, `/prompts/categoria/:cat`, `/prompts/:slug`, `/prompts/builder`, `/prompts/salvos` | 48 prompts com preenchimento de variáveis + Prompt Builder |
+| `/noticias`, `/blog`, `/tutoriais`, `/guias`, `/videos` (+ `/categoria/:cat`, `/:slug`) | 49 conteúdos com corpo estruturado, TOC, relacionados, tags |
+| `/busca?q=`, `/favoritos`, `/historico`, `/tendencias`, `/tags`, `/tags/:tag` | descoberta |
+| `/sobre`, `/contato`, `/privacidade`, `/termos`, `*` | institucionais + 404 útil |
 
 ## AdSense
 
-- Script carregado **uma única vez** no `<head>` de `index.html` (`ca-pub-2412850402145505`).
-- `AdSlot`, `AdBanner`, `AdInArticle`, `AdSidebar` em `src/components/ui/monetization.tsx`.
-- Substitua os `data-ad-slot` de exemplo (`SLOT_IDS`) pelos IDs reais das unidades criadas no painel do AdSense.
-- `public/ads.txt` já inclui o publisher.
+- Script oficial carregado **uma única vez** no `<head>` de `index.html` (`ca-pub-6438481907721951`, `async`, `crossorigin`).
+- `public/ads.txt` incluído.
+- Componentes em `src/components/ui/monetization.tsx`. Cada `AdSlot` faz `adsbygoogle.push({})` apenas uma vez após montar, reserva altura mínima (sem CLS) e é rotulado “Publicidade”.
+- Posicionamentos: `AdBanner` (entre seções/listas), `AdInArticle` (bloco `{type:"ad"}` no corpo dos artigos), `AdSidebar` (sticky, desktop), `AdMobile` (apenas mobile). Nenhum anúncio sobre inputs das ferramentas.
+- Para usar unidades específicas, passe `slot="1234567890"` ao `AdSlot`; sem slot, funciona com Auto Ads.
+
+## SEO
+
+Title/description/OG/canonical por rota (`useSeo`), JSON-LD (Article, FAQPage, BreadcrumbList, SoftwareApplication), headings semânticos, breadcrumbs, links internos, `robots.txt`, `sitemap.xml`. Com `VITE_ROUTER=browser` (Vercel) as URLs são limpas.
+
+## Executar
+
+```bash
+npm install
+npm run dev        # http://localhost:5173
+npm run build      # gera dist/ (single-file)
+npm run preview
+node scripts/generate-sitemap.mjs   # regenera o sitemap após adicionar conteúdo
+```
 
 ## Deploy na Vercel
 
-1. Suba o repositório no GitHub.
-2. Em vercel.com → *New Project* → importe o repositório (framework: Vite; build `npm run build`; output `dist`).
-3. `vercel.json` já configura `VITE_ROUTER=browser`, rewrites de SPA e headers de segurança.
-4. Após publicar, atualize `SITE_URL` em `src/lib/seo.ts`, `public/robots.txt` e `public/sitemap.xml` com o domínio final.
+1. Suba o repositório para o GitHub.
+2. Na Vercel: **Add New Project → Import**. Framework detectado: Vite. Build: `npm run build`. Output: `dist`.
+3. `vercel.json` já define `VITE_ROUTER=browser` (URLs limpas) e os rewrites de SPA. Nada mais a configurar.
+4. Após o deploy, teste abrir uma rota interna diretamente (ex.: `/ferramentas/juros-compostos`).
+5. Atualize `SITE.url` em `src/lib/utils.ts` e o domínio em `robots.txt`/`sitemap.xml` para o seu domínio final.
 
-## Conectar backend depois (sem refazer a UI)
+## Dados locais
 
-| Camada | Arquivo | Como trocar |
-| --- | --- | --- |
-| Persistência do usuário | `src/lib/store.tsx` → objeto `storage` | Substituir localStorage por chamadas à API mantendo `get/set/remove` |
-| Notícias/artigos | `src/data/news.ts`, `articles.ts`, `learning.ts` | Mapear RSS/CMS para os tipos em `src/lib/types.ts` |
-| Contato | `ContactPage` | Trocar `setMsgs` por `fetch("/api/contato")` |
-| Câmbio | `src/tools/converters.tsx` → `Moeda` | Preencher a taxa a partir de uma API |
+Tudo sob o prefixo `nexo:` no `localStorage`: `theme`, `favorites`, `history`, `prompt-history`, `tool-usage`, `tasks`, `notes`, `pomodoro-sessions`.

@@ -1,152 +1,549 @@
 import type { ToolCategory, ToolMeta } from "@/lib/types";
 
-export const TOOL_CATEGORIES: { slug: ToolCategory; name: string; description: string; icon: string }[] = [
-  { slug: "calculadoras", name: "Calculadoras", description: "Porcentagem, juros, finanças pessoais, saúde e trabalho.", icon: "calculator" },
-  { slug: "datas", name: "Datas e tempo", description: "Idade, diferença entre datas, prazos, dias úteis e contagens.", icon: "calendar" },
-  { slug: "conversores", name: "Conversores", description: "Unidades, bases numéricas, cores, códigos e formatos de dados.", icon: "arrow-left-right" },
-  { slug: "texto", name: "Texto", description: "Contadores, limpeza, formatação, comparação e análise de textos.", icon: "type" },
-  { slug: "geradores", name: "Geradores", description: "Senhas, QR Codes, UUIDs, nomes, paletas, CSS e metadados.", icon: "sparkles" },
-  { slug: "ia", name: "IA e conteúdo", description: "Prompts, tokens, custos de API, personas e roteiros.", icon: "bot" },
-  { slug: "produtividade", name: "Produtividade", description: "Pomodoro, tarefas, notas, hábitos e decisões.", icon: "timer" },
+export const toolCategories: { slug: ToolCategory; name: string; description: string; icon: string }[] = [
+  { slug: "calculadoras", name: "Calculadoras", description: "Porcentagem, juros, financiamento, saúde e finanças pessoais.", icon: "Calculator" },
+  { slug: "datas", name: "Datas e tempo", description: "Idade, diferença entre datas, contagem regressiva e dias úteis.", icon: "CalendarDays" },
+  { slug: "conversores", name: "Conversores", description: "Unidades, bases numéricas, cores, dados e codificação.", icon: "ArrowLeftRight" },
+  { slug: "texto", name: "Texto", description: "Contadores, formatação, limpeza e análise de textos.", icon: "Type" },
+  { slug: "geradores", name: "Geradores", description: "Senhas, QR Code, UUID, hashes, paletas e sorteios.", icon: "Sparkles" },
+  { slug: "ia", name: "IA e escrita", description: "Prompts, resumos, títulos, tokens e legibilidade — 100% local.", icon: "Bot" },
+  { slug: "produtividade", name: "Produtividade", description: "Pomodoro, tarefas, notas e cronômetro no navegador.", icon: "Timer" },
 ];
 
-type Q = [string, string];
-function t(slug: string, name: string, category: ToolCategory, short: string, description: string, tags: string[], howItWorks: string, examples: string[], faq: Q[], related: string[], flags: { featured?: boolean; isNew?: boolean } = {}): ToolMeta {
-  return { slug, name, category, short, description, tags, howItWorks, examples, faq: faq.map(([q, a]) => ({ q, a })), related, ...flags };
+type Partial = Omit<ToolMeta, "howTo" | "faq" | "examples" | "related"> & Partial2;
+interface Partial2 {
+  howTo?: string[];
+  faq?: { q: string; a: string }[];
+  examples?: string[];
+  related?: string[];
 }
 
-export const TOOLS: ToolMeta[] = [
-  /* ------------------------------ Calculadoras ----------------------------- */
-  t("porcentagem", "Calculadora de porcentagem", "calculadoras", "Quanto é X% de Y, que % X é de Y e variação percentual.", "Resolva os três problemas clássicos de porcentagem em segundos: valor percentual de um número, proporção entre dois valores e variação entre um valor inicial e final.", ["porcentagem", "matemática", "finanças"], "Escolha o modo, informe os valores e o resultado é calculado instantaneamente. A fórmula usada aparece abaixo do resultado para você conferir.", ["15% de 240 = 36", "30 é 12,5% de 240", "De 80 para 100 = +25%"], [["Como calcular porcentagem de um valor?", "Multiplique o valor pela porcentagem e divida por 100. Ex.: 240 × 15 ÷ 100 = 36."], ["Como saber a variação percentual?", "(valor final − valor inicial) ÷ valor inicial × 100."]], ["desconto", "aumento-percentual", "regra-de-tres", "variacao-percentual"], { featured: true }),
-  t("desconto", "Calculadora de desconto", "calculadoras", "Preço final, valor economizado e descontos acumulados.", "Descubra quanto vai pagar após um desconto, quanto economiza e o preço final com dois descontos em sequência.", ["desconto", "compras", "porcentagem"], "Informe o preço original e o percentual de desconto. Se houver um segundo desconto (cupom), ele é aplicado sobre o valor já descontado.", ["R$ 199,90 com 30% = R$ 139,93", "20% + 10% não é 30%: é 28%"], [["Dois descontos somam?", "Não. 20% + 10% equivalem a 28% porque o segundo incide sobre o valor já reduzido."], ["Como calcular o preço original a partir do preço com desconto?", "Divida o preço final por (1 − desconto). Ex.: 140 ÷ 0,7 = 200."]], ["porcentagem", "markup", "margem-de-lucro"]),
-  t("aumento-percentual", "Calculadora de aumento percentual", "calculadoras", "Aplique um aumento e veja o novo valor.", "Calcule o novo valor após um reajuste, aumento salarial, correção de preço ou acréscimo de taxa.", ["aumento", "reajuste", "porcentagem"], "Informe o valor atual e o percentual de aumento. Também mostramos o valor do acréscimo isolado.", ["Salário R$ 3.000 + 8% = R$ 3.240", "Aluguel R$ 1.500 + 4,5% = R$ 1.567,50"], [["Aumentos sucessivos se somam?", "Não, eles se multiplicam. 10% depois 10% dá 21%."]], ["porcentagem", "variacao-percentual", "inflacao"]),
-  t("variacao-percentual", "Variação percentual", "calculadoras", "Diferença percentual entre dois valores.", "Compare um valor inicial e um final para saber a variação em porcentagem — útil para preços, métricas, peso ou investimentos.", ["variação", "métricas", "porcentagem"], "Informe o valor antes e depois. O resultado indica alta ou queda e o valor absoluto da diferença.", ["De 1.200 para 1.500 visitas = +25%", "De R$ 50 para R$ 42 = −16%"], [["Qual a diferença entre variação e diferença percentual?", "Variação usa o valor inicial como base. Diferença percentual usa a média dos dois valores."]], ["porcentagem", "aumento-percentual", "cagr"]),
-  t("juros-simples", "Juros simples", "calculadoras", "Juros, montante e taxa em regime simples.", "Calcule juros simples sobre um capital por um período com taxa fixa, sem capitalização.", ["juros", "finanças", "empréstimo"], "J = C × i × t. Informe capital, taxa por período e número de períodos. A taxa e o tempo devem estar na mesma unidade.", ["R$ 1.000 a 2% ao mês por 6 meses = R$ 120 de juros", "Montante = R$ 1.120"], [["Quando juros simples são usados?", "Multas por atraso, alguns títulos e cálculos rápidos. Empréstimos e investimentos usam juros compostos."]], ["juros-compostos", "financiamento-price", "parcelamento"]),
-  t("juros-compostos", "Juros compostos", "calculadoras", "Montante com aportes mensais e evolução período a período.", "Simule investimentos ou dívidas com capitalização composta, aportes periódicos e veja a tabela de evolução.", ["juros compostos", "investimentos", "finanças"], "M = C × (1 + i)^t, somando os aportes capitalizados. Informe capital inicial, aporte mensal, taxa e prazo.", ["R$ 500/mês a 0,8% a.m. por 10 anos ≈ R$ 97 mil", "R$ 10.000 a 12% a.a. por 5 anos = R$ 17.623"], [["Taxa anual ou mensal?", "Escolha a unidade no seletor. Convertemos com equivalência composta: (1+i_a)^(1/12) − 1."], ["O que é o efeito bola de neve?", "Os juros de cada período passam a render juros nos seguintes, acelerando o crescimento."]], ["juros-simples", "independencia-financeira", "cagr", "inflacao"], { featured: true }),
-  t("regra-de-tres", "Regra de três", "calculadoras", "Simples direta, inversa e composta.", "Resolva proporções: se A está para B, C está para X. Suporta grandezas inversamente proporcionais.", ["proporção", "matemática", "regra de três"], "Preencha três valores conhecidos e deixe X em branco. Selecione se as grandezas são diretas ou inversas.", ["3 caixas custam R$ 45 → 7 caixas custam R$ 105", "4 pedreiros, 12 dias → 6 pedreiros, 8 dias (inversa)"], [["Quando usar regra de três inversa?", "Quando uma grandeza aumenta e a outra diminui na mesma proporção, como número de trabalhadores e tempo."]], ["porcentagem", "media-ponderada"]),
-  t("imc", "Calculadora de IMC", "calculadoras", "Índice de massa corporal com classificação da OMS.", "Calcule o IMC a partir do peso e altura e veja a classificação e a faixa de peso saudável para sua altura.", ["saúde", "imc", "peso"], "IMC = peso ÷ altura². Informe peso em kg e altura em cm ou m.", ["70 kg, 1,75 m → IMC 22,9 (normal)", "Faixa saudável para 1,75 m: 56,7 a 76,3 kg"], [["O IMC é confiável para atletas?", "Não distingue massa muscular de gordura. Serve como triagem populacional, não diagnóstico."]], ["tmb", "agua-diaria", "peso"]),
-  t("tmb", "Taxa metabólica basal (TMB)", "calculadoras", "Calorias em repouso e gasto diário por nível de atividade.", "Estime quantas calorias seu corpo gasta em repouso (Mifflin-St Jeor) e o gasto total por nível de atividade.", ["saúde", "calorias", "dieta"], "Usa a equação de Mifflin-St Jeor com sexo, idade, peso e altura, multiplicada pelo fator de atividade.", ["Homem, 30 anos, 80 kg, 180 cm → TMB ≈ 1.780 kcal", "Moderadamente ativo → ≈ 2.760 kcal/dia"], [["Como usar para emagrecer?", "Um déficit de 300 a 500 kcal/dia abaixo do gasto total é considerado sustentável. Consulte um profissional."]], ["imc", "agua-diaria"]),
-  t("agua-diaria", "Ingestão diária de água", "calculadoras", "Quanto beber por dia com base no peso e atividade.", "Estimativa prática de consumo de água diário considerando peso corporal, atividade física e clima.", ["saúde", "hidratação"], "Base de 35 ml por kg, com acréscimo por minutos de exercício e clima quente.", ["70 kg → 2,45 L/dia", "+ 60 min de treino → ≈ 2,9 L"], [["Café e chá contam?", "Contam parcialmente. Água pura ainda é a melhor referência."]], ["imc", "tmb"]),
-  t("dividir-conta", "Dividir conta", "calculadoras", "Divida a conta com gorjeta entre pessoas.", "Calcule a parte de cada pessoa em um jantar ou viagem, incluindo taxa de serviço opcional.", ["restaurante", "gorjeta", "divisão"], "Informe o total, número de pessoas e o percentual de serviço.", ["R$ 380 + 10% ÷ 4 = R$ 104,50 cada"], [["A taxa de serviço é obrigatória?", "No Brasil ela é opcional, mas costuma-se pagar quando o atendimento foi adequado."]], ["gorjeta", "porcentagem"]),
-  t("gorjeta", "Calculadora de gorjeta", "calculadoras", "Gorjeta por percentual e total por pessoa.", "Calcule rapidamente o valor da gorjeta e o total final, com divisão por pessoas.", ["gorjeta", "viagem", "restaurante"], "Informe o valor da conta, o percentual de gorjeta e quantas pessoas dividem.", ["US$ 86 + 18% = US$ 101,48", "Dividido por 2 = US$ 50,74"], [["Quanto dar de gorjeta nos EUA?", "Entre 15% e 20% em restaurantes com serviço à mesa."]], ["dividir-conta", "porcentagem"]),
-  t("margem-de-lucro", "Margem de lucro", "calculadoras", "Margem bruta, lucro e preço a partir do custo.", "Descubra a margem de lucro de um produto ou o preço de venda necessário para atingir a margem desejada.", ["lucro", "precificação", "negócios"], "Margem = (preço − custo) ÷ preço. Você pode informar custo + preço ou custo + margem alvo.", ["Custo R$ 60, preço R$ 100 → margem 40%", "Custo R$ 60, margem 40% → preço R$ 100"], [["Margem é o mesmo que markup?", "Não. Markup é sobre o custo; margem é sobre o preço de venda."]], ["markup", "ponto-de-equilibrio", "roi"]),
-  t("markup", "Calculadora de markup", "calculadoras", "Preço de venda a partir do custo e do markup.", "Aplique um índice de markup sobre o custo para definir o preço e veja a margem equivalente.", ["precificação", "markup", "vendas"], "Preço = custo × (1 + markup). Também exibimos a margem sobre o preço.", ["Custo R$ 50 com markup 80% → R$ 90 (margem 44%)"], [["Qual markup usar?", "Depende de impostos, despesas fixas e lucro desejado. Calcule o custo total antes."]], ["margem-de-lucro", "ponto-de-equilibrio"]),
-  t("ponto-de-equilibrio", "Ponto de equilíbrio", "calculadoras", "Quantas unidades vender para cobrir custos.", "Calcule o volume de vendas necessário para zerar o resultado com base em custos fixos, preço e custo variável.", ["negócios", "finanças", "vendas"], "PE = custos fixos ÷ (preço − custo variável unitário). Mostramos também o faturamento de equilíbrio.", ["Fixo R$ 8.000, preço R$ 50, variável R$ 30 → 400 unidades"], [["E se a margem de contribuição for negativa?", "O negócio perde dinheiro a cada venda — é preciso reajustar preço ou custo."]], ["margem-de-lucro", "markup", "roi"]),
-  t("parcelamento", "Simulador de parcelamento", "calculadoras", "Valor da parcela com juros e custo total.", "Descubra o valor da parcela de uma compra com juros mensais e quanto pagará a mais no total.", ["parcelas", "cartão", "juros"], "Usa a fórmula Price: PMT = PV × i ÷ (1 − (1+i)^−n).", ["R$ 2.400 em 12× a 2,5% a.m. → R$ 234,00/mês", "Total pago R$ 2.808 (+17%)"], [["Parcelar sem juros vale a pena?", "Em geral sim, se o preço à vista for igual. Se houver desconto à vista maior que o rendimento do dinheiro, pague à vista."]], ["financiamento-price", "juros-compostos"]),
-  t("financiamento-price", "Financiamento (Price e SAC)", "calculadoras", "Compare prestações Price e SAC com tabela completa.", "Simule um financiamento imobiliário ou de veículo nos sistemas Price (parcelas fixas) e SAC (parcelas decrescentes).", ["financiamento", "imóvel", "veículo", "juros"], "Informe valor financiado, taxa anual e prazo em meses. Geramos a tabela das primeiras parcelas em ambos os sistemas.", ["R$ 300 mil, 10% a.a., 360 meses → Price ≈ R$ 2.394; SAC 1ª ≈ R$ 3.221"], [["Price ou SAC?", "SAC paga menos juros no total; Price tem parcela inicial menor. Depende do seu fluxo de caixa."]], ["parcelamento", "juros-compostos"]),
-  t("media-ponderada", "Média ponderada", "calculadoras", "Média com pesos diferentes para notas ou métricas.", "Calcule a média ponderada de notas, avaliações ou indicadores com pesos distintos.", ["média", "notas", "escola"], "Some cada valor multiplicado pelo peso e divida pela soma dos pesos. Adicione quantas linhas precisar.", ["Notas 7 (peso 2), 8 (peso 3), 6 (peso 1) → 7,33"], [["Peso zero é permitido?", "Sim, mas o item não influencia a média."]], ["regra-de-tres", "porcentagem"]),
-  t("roi", "Calculadora de ROI", "calculadoras", "Retorno sobre investimento em % e múltiplo.", "Meça o retorno de uma campanha, projeto ou ativo comparando ganho e investimento.", ["roi", "marketing", "investimentos"], "ROI = (retorno − investimento) ÷ investimento × 100.", ["Investiu R$ 5.000, retornou R$ 12.000 → ROI 140%"], [["ROI e ROAS são iguais?", "Não. ROAS = receita ÷ gasto em anúncios. ROI desconta o custo total."]], ["margem-de-lucro", "cagr", "ponto-de-equilibrio"]),
-  t("cagr", "CAGR — crescimento anual composto", "calculadoras", "Taxa média de crescimento entre dois valores.", "Calcule a taxa de crescimento anual composta de uma receita, base de usuários ou investimento ao longo de anos.", ["cagr", "crescimento", "investimentos"], "CAGR = (final ÷ inicial)^(1/anos) − 1.", ["De R$ 100 mil para R$ 250 mil em 4 anos → 25,7% a.a."], [["Para que serve o CAGR?", "Compara crescimentos em períodos diferentes numa única taxa anual equivalente."]], ["juros-compostos", "roi", "variacao-percentual"]),
-  t("inflacao", "Correção pela inflação", "calculadoras", "Atualize um valor por uma taxa anual acumulada.", "Descubra quanto um valor passado vale hoje ou quanto um valor futuro perde poder de compra dado um índice anual.", ["inflação", "ipca", "poder de compra"], "Valor corrigido = valor × (1 + taxa)^anos. Informe a taxa anual média.", ["R$ 1.000 há 10 anos com 5% a.a. → R$ 1.629 hoje"], [["Onde encontro a inflação oficial?", "IBGE (IPCA) e Banco Central. Esta ferramenta usa a taxa que você informar."]], ["juros-compostos", "aumento-percentual"]),
-  t("independencia-financeira", "Independência financeira", "calculadoras", "Quanto acumular e em quanto tempo para viver de renda.", "Calcule o patrimônio necessário para cobrir seus gastos mensais e estime em quantos anos você chega lá com aportes.", ["fire", "aposentadoria", "investimentos"], "Patrimônio alvo = gasto anual ÷ taxa de retirada. O prazo é estimado por juros compostos com seus aportes.", ["Gasto R$ 6.000/mês, retirada 4% → R$ 1,8 mi", "Aportando R$ 3.000/mês a 0,6% a.m. → ≈ 22 anos"], [["O que é a regra dos 4%?", "Retirar 4% do patrimônio ao ano tende a preservá-lo por 30 anos com uma carteira diversificada."]], ["juros-compostos", "inflacao"]),
-  t("valor-hora-freelancer", "Valor da hora freelancer", "calculadoras", "Quanto cobrar por hora para atingir sua meta.", "Calcule o valor mínimo da sua hora considerando renda desejada, custos, férias e horas produtivas reais.", ["freelancer", "precificação", "carreira"], "Divide (renda + custos) anuais pelas horas faturáveis efetivas, descontando férias e horas não pagas.", ["Meta R$ 10 mil/mês, 120 h faturáveis → R$ 95/h"], [["Por que descontar horas?", "Nem toda hora de trabalho é faturável: reuniões, propostas e administração não são pagas."]], ["conversor-salario-hora", "hora-extra", "margem-de-lucro"]),
-  t("conversor-salario-hora", "Salário mensal ⇄ valor hora", "calculadoras", "Converta salário em valor por hora, dia e ano.", "Veja quanto seu salário mensal representa por hora, por dia e por ano — ou o contrário.", ["salário", "carreira", "trabalho"], "Considera 220 horas mensais (CLT) por padrão, ajustável.", ["R$ 4.400/mês → R$ 20/h → R$ 52.800/ano"], [["Por que 220 horas?", "É a base mensal padrão da CLT para 44 horas semanais."]], ["valor-hora-freelancer", "hora-extra", "decimo-terceiro"]),
-  t("hora-extra", "Calculadora de hora extra", "calculadoras", "Valor de horas extras com adicional de 50% ou 100%.", "Calcule quanto receber por horas extras trabalhadas com base no salário e no adicional aplicável.", ["clt", "trabalho", "salário"], "Valor hora = salário ÷ horas mensais. Hora extra = valor hora × (1 + adicional).", ["R$ 3.300, 10 h extras a 50% → R$ 225"], [["Qual o adicional mínimo?", "50% em dias úteis e 100% em domingos e feriados, salvo convenção coletiva mais favorável."]], ["conversor-salario-hora", "decimo-terceiro", "ferias"]),
-  t("decimo-terceiro", "Décimo terceiro", "calculadoras", "Estimativa proporcional aos meses trabalhados.", "Calcule o 13º salário bruto proporcional aos meses trabalhados no ano.", ["clt", "13º", "salário"], "13º = salário ÷ 12 × meses trabalhados (mês conta com 15 dias ou mais).", ["R$ 3.000 com 8 meses → R$ 2.000"], [["Há desconto?", "Sim, INSS e IRRF incidem na segunda parcela. Esta ferramenta mostra o valor bruto."]], ["ferias", "hora-extra"]),
-  t("ferias", "Calculadora de férias", "calculadoras", "Férias com 1/3 constitucional e abono.", "Estime o valor bruto das férias com o terço constitucional e a opção de vender 10 dias (abono pecuniário).", ["clt", "férias", "salário"], "Férias = salário ÷ 30 × dias + 1/3. Abono = 10 dias + 1/3 sobre eles.", ["R$ 3.000, 30 dias → R$ 4.000 brutos"], [["Posso vender parte das férias?", "Sim, até 1/3 (10 dias), a critério do empregado."]], ["decimo-terceiro", "hora-extra"]),
-  t("calculadora-de-horas", "Calculadora de horas", "calculadoras", "Some e subtraia horas e minutos.", "Some jornadas, calcule intervalos entre horários e converta minutos em horas decimais.", ["horas", "jornada", "tempo"], "Informe horário de entrada e saída e o intervalo. Mostramos o total em h:min e decimal.", ["08:00 às 17:30 com 1 h de almoço = 8h30 (8,5 h)"], [["Como converter 7h45 em decimal?", "45 ÷ 60 = 0,75 → 7,75 h."]], ["hora-extra", "diferenca-entre-datas", "tempo"]),
-  t("alcool-ou-gasolina", "Álcool ou gasolina?", "calculadoras", "Descubra qual combustível compensa.", "Compare o preço do etanol e da gasolina usando a regra dos 70% ou o consumo real do seu carro.", ["combustível", "carro", "economia"], "Se etanol ÷ gasolina ≤ 0,70, o etanol compensa. Com o consumo real, calculamos o custo por km.", ["Etanol R$ 3,89 / gasolina R$ 5,79 → 67% → etanol"], [["Por que 70%?", "O etanol rende cerca de 30% menos que a gasolina na média dos motores flex."]], ["consumo-combustivel", "custo-por-km"]),
-  t("consumo-combustivel", "Consumo de combustível", "calculadoras", "km/l, custo por km e gasto de uma viagem.", "Calcule o consumo do veículo, o custo por quilômetro e o gasto total de uma viagem.", ["combustível", "viagem", "carro"], "Consumo = km rodados ÷ litros. Custo da viagem = distância ÷ consumo × preço do litro.", ["420 km com 35 L → 12 km/l", "Viagem de 600 km a R$ 5,80 → R$ 290"], [["Como medir o consumo real?", "Encha o tanque, zere o odômetro, rode e encha de novo. Divida km por litros abastecidos."]], ["alcool-ou-gasolina", "custo-por-km"]),
-  t("custo-por-km", "Custo por km do carro", "calculadoras", "Quanto custa rodar 1 km incluindo custos fixos.", "Some combustível, manutenção, seguro, IPVA e depreciação para descobrir o custo real por quilômetro.", ["carro", "custos", "economia"], "Custos anuais ÷ km rodados por ano + custo de combustível por km.", ["R$ 12.000/ano fixos, 15.000 km, gasolina R$ 0,48/km → R$ 1,28/km"], [["Devo incluir depreciação?", "Sim — é geralmente o maior custo de ter um carro."]], ["consumo-combustivel", "alcool-ou-gasolina"]),
-  t("sorteador", "Sorteador de números e nomes", "calculadoras", "Sorteie números em um intervalo ou nomes de uma lista.", "Faça sorteios justos: um ou mais números sem repetição em um intervalo, ou nomes de uma lista.", ["sorteio", "aleatório", "números"], "Usa o gerador criptográfico do navegador (crypto.getRandomValues) para resultados imprevisíveis.", ["3 números entre 1 e 60", "1 nome entre 12 participantes"], [["O sorteio é realmente aleatório?", "Usa a API criptográfica do navegador, adequada para sorteios comuns."]], ["gerador-de-numeros-aleatorios", "roleta-de-decisao"]),
-
-  /* ---------------------------------- Datas -------------------------------- */
-  t("calculadora-de-idade", "Calculadora de idade", "datas", "Idade exata em anos, meses e dias.", "Descubra sua idade exata, quantos dias já viveu e quanto falta para o próximo aniversário.", ["idade", "aniversário", "datas"], "Informe a data de nascimento (e opcionalmente uma data de referência).", ["Nascido em 15/03/1990 → 35 anos, 11 meses e 20 dias"], [["Conta ano bissexto?", "Sim, todos os cálculos usam o calendário real."]], ["diferenca-entre-datas", "dia-da-semana", "contagem-regressiva"], { featured: true }),
-  t("diferenca-entre-datas", "Diferença entre datas", "datas", "Dias, semanas, meses e anos entre duas datas.", "Calcule o intervalo exato entre duas datas em várias unidades, com opção de contar dias úteis.", ["datas", "prazo", "intervalo"], "Informe a data inicial e final. Mostramos dias totais, semanas, meses/dias e dias úteis (seg–sex).", ["01/01/2026 a 30/06/2026 → 180 dias, 25 semanas"], [["Inclui o último dia?", "Por padrão não. Marque a opção para incluir."]], ["somar-dias", "dias-uteis", "calculadora-de-idade"]),
-  t("somar-dias", "Somar ou subtrair dias", "datas", "Data futura ou passada a partir de hoje.", "Descubra que dia será daqui a N dias, semanas ou meses — ou qual era a data N dias atrás.", ["datas", "prazo", "vencimento"], "Escolha a data base, a quantidade e a unidade. Também mostra o dia da semana do resultado.", ["Hoje + 45 dias", "10/02/2026 − 90 dias"], [["Como somar dias úteis?", "Use a calculadora de dias úteis, que pula fins de semana."]], ["dias-uteis", "diferenca-entre-datas"]),
-  t("dias-uteis", "Dias úteis", "datas", "Conte dias úteis entre datas ou some dias úteis.", "Calcule quantos dias úteis existem entre duas datas ou qual data cai após N dias úteis, excluindo sábados e domingos.", ["dias úteis", "prazo", "trabalho"], "Considera segunda a sexta como úteis. Feriados não são incluídos automaticamente (varia por cidade).", ["01/03 a 31/03/2026 → 22 dias úteis"], [["Feriados são descontados?", "Não automaticamente. Subtraia manualmente os feriados do seu município."]], ["diferenca-entre-datas", "somar-dias"]),
-  t("contagem-regressiva", "Contagem regressiva", "datas", "Quanto falta para uma data importante.", "Acompanhe em tempo real quanto falta para um evento: dias, horas, minutos e segundos.", ["evento", "countdown", "datas"], "Escolha data e hora do evento. O contador atualiza a cada segundo.", ["Faltam 42 dias para as férias"], [["Posso salvar o evento?", "O último evento fica salvo no seu navegador."]], ["somar-dias", "diferenca-entre-datas"]),
-  t("dia-da-semana", "Dia da semana de uma data", "datas", "Em que dia da semana caiu ou cairá uma data.", "Descubra o dia da semana de qualquer data, o número da semana no ano e o dia do ano.", ["datas", "calendário"], "Usa o calendário gregoriano com semanas ISO.", ["25/12/2026 → sexta-feira, semana 52, dia 359"], [["O que é semana ISO?", "Padrão em que a semana começa na segunda e a semana 1 contém a primeira quinta do ano."]], ["calculadora-de-idade", "somar-dias"]),
-  t("calculadora-de-gestacao", "Calculadora gestacional", "datas", "Data provável do parto e semana atual.", "Estime a data provável do parto e a idade gestacional a partir da última menstruação (regra de Naegele).", ["gestação", "saúde", "datas"], "DPP = DUM + 280 dias. A semana gestacional é a diferença até hoje.", ["DUM 01/01/2026 → DPP 08/10/2026"], [["É um diagnóstico?", "Não. É uma estimativa — o ultrassom pode ajustar a data."]], ["somar-dias", "diferenca-entre-datas"]),
-  t("fuso-horario", "Conversor de fuso horário", "datas", "Compare horários entre cidades do mundo.", "Veja que horas são em outras cidades e converta um horário de reunião entre fusos.", ["fuso", "horário", "reunião"], "Usa a API Intl do navegador com os fusos IANA.", ["14:00 em São Paulo = 17:00 em Lisboa"], [["Considera horário de verão?", "Sim, o navegador aplica as regras de cada fuso automaticamente."]], ["timestamp-unix", "calculadora-de-horas"]),
-
-  /* ------------------------------- Conversores ----------------------------- */
-  t("temperatura", "Conversor de temperatura", "conversores", "Celsius, Fahrenheit e Kelvin.", "Converta temperaturas entre as três escalas com fórmulas exibidas.", ["temperatura", "unidades"], "°F = °C × 9/5 + 32; K = °C + 273,15.", ["100 °C = 212 °F = 373,15 K"], [["Qual a temperatura em que °C e °F são iguais?", "−40 graus."]], ["comprimento", "peso", "energia"]),
-  t("comprimento", "Conversor de comprimento", "conversores", "Metros, km, milhas, pés, polegadas e mais.", "Converta medidas de distância entre sistemas métrico e imperial.", ["comprimento", "unidades", "distância"], "Todas as unidades são convertidas via metro como base.", ["1 milha = 1,609 km", "6 pés = 1,83 m"], [["Quantos cm tem uma polegada?", "2,54 cm exatos."]], ["area", "volume", "velocidade"]),
-  t("peso", "Conversor de peso e massa", "conversores", "kg, g, libras, onças, toneladas e arrobas.", "Converta unidades de massa, incluindo arroba usada na pecuária.", ["peso", "massa", "unidades"], "Base em quilogramas.", ["1 lb = 0,4536 kg", "1 arroba = 15 kg"], [["Peso e massa são a mesma coisa?", "No uso cotidiano sim; em física, peso é força (massa × gravidade)."]], ["comprimento", "volume", "imc"]),
-  t("velocidade", "Conversor de velocidade", "conversores", "km/h, m/s, mph, nós e pace.", "Converta velocidades e ritmo de corrida (min/km).", ["velocidade", "corrida", "unidades"], "Base em m/s. Pace = 60 ÷ km/h.", ["10 km/h = 6:00 min/km", "60 mph = 96,6 km/h"], [["O que é nó?", "1 milha náutica por hora = 1,852 km/h."]], ["comprimento", "tempo"]),
-  t("area", "Conversor de área", "conversores", "m², hectare, alqueire, acre e pés².", "Converta áreas incluindo unidades rurais brasileiras (alqueire paulista e mineiro).", ["área", "terreno", "unidades"], "Base em metros quadrados.", ["1 hectare = 10.000 m²", "1 alqueire paulista = 24.200 m²"], [["Qual a diferença entre alqueire paulista e mineiro?", "Paulista: 24.200 m². Mineiro: 48.400 m²."]], ["comprimento", "volume"]),
-  t("volume", "Conversor de volume", "conversores", "Litros, ml, m³, galões, xícaras e colheres.", "Converta volumes para cozinha, indústria e combustíveis.", ["volume", "cozinha", "unidades"], "Base em litros. Xícara = 240 ml (padrão brasileiro).", ["1 galão (US) = 3,785 L", "1 xícara = 240 ml"], [["Xícara americana é igual à brasileira?", "Americana: 236,6 ml. Brasileira/métrica: 240 ml."]], ["peso", "area"]),
-  t("energia", "Conversor de energia", "conversores", "Joule, caloria, kWh, BTU e Wh.", "Converta unidades de energia para física, nutrição e contas de luz.", ["energia", "kwh", "unidades"], "Base em joules. 1 kcal = 4.184 J.", ["1 kWh = 3,6 MJ = 860 kcal"], [["Caloria de alimento é kcal?", "Sim, a 'caloria' de rótulos é na verdade quilocaloria."]], ["temperatura", "pressao"]),
-  t("pressao", "Conversor de pressão", "conversores", "Pa, bar, psi, atm e mmHg.", "Converta pressões para pneus, meteorologia e engenharia.", ["pressão", "psi", "unidades"], "Base em pascal.", ["32 psi = 2,2 bar", "1 atm = 760 mmHg"], [["Qual a pressão ideal do pneu?", "Consulte a etiqueta na porta do motorista; geralmente 28 a 35 psi."]], ["energia", "temperatura"]),
-  t("dados-digitais", "Conversor de dados digitais", "conversores", "Bytes, KB, MB, GB, TB e bits.", "Converta tamanhos de arquivo e velocidades entre bits e bytes, base 1000 e 1024.", ["bytes", "armazenamento", "internet"], "Escolha entre base decimal (KB = 1000 B) e binária (KiB = 1024 B).", ["1 GB = 1.024 MB (binário)", "100 Mbps = 12,5 MB/s"], [["Por que meu HD de 1 TB mostra 931 GB?", "Fabricantes usam base 1000; o sistema operacional usa 1024."]], ["base-numerica", "tempo"]),
-  t("tempo", "Conversor de tempo", "conversores", "Segundos, minutos, horas, dias, semanas e anos.", "Converta durações entre unidades de tempo.", ["tempo", "duração", "unidades"], "Base em segundos. Mês = 30,44 dias; ano = 365,25 dias.", ["1 semana = 10.080 minutos", "90 minutos = 1,5 h"], [["Quantos segundos tem um dia?", "86.400."]], ["calculadora-de-horas", "dados-digitais"]),
-  t("base-numerica", "Conversor de base numérica", "conversores", "Decimal, binário, octal e hexadecimal.", "Converta números entre bases 2, 8, 10 e 16 e veja todas ao mesmo tempo.", ["binário", "hexadecimal", "programação"], "Digite o número em qualquer base; as demais são atualizadas.", ["255 = 0xFF = 0b11111111 = 0o377"], [["Para que serve hexadecimal?", "Representa bytes de forma compacta: cores CSS, endereços de memória."]], ["texto-para-binario", "cores", "dados-digitais"]),
-  t("cores", "Conversor de cores", "conversores", "HEX, RGB, HSL com preview e contraste.", "Converta cores entre formatos, visualize e verifique o contraste com branco e preto (WCAG).", ["cores", "css", "design"], "Digite uma cor em qualquer formato. Calculamos a luminância relativa para a razão de contraste.", ["#1d4ed8 = rgb(29, 78, 216) = hsl(224, 76%, 48%)"], [["Qual contraste mínimo para texto?", "4,5:1 para texto normal e 3:1 para texto grande (WCAG AA)."]], ["paleta-de-cores", "gradiente-css", "base-numerica"]),
-  t("timestamp-unix", "Timestamp Unix", "conversores", "Converta timestamp em data e vice-versa.", "Transforme timestamps Unix (segundos ou milissegundos) em datas legíveis e datas em timestamp.", ["unix", "timestamp", "programação"], "Detecta automaticamente segundos ou milissegundos.", ["1767225600 → 01/01/2026 00:00 UTC"], [["O que é o problema de 2038?", "Timestamps de 32 bits estouram em 19/01/2038."]], ["fuso-horario", "diferenca-entre-datas"]),
-  t("base64", "Codificador Base64", "conversores", "Codifique e decodifique texto em Base64.", "Converta texto (incluindo acentos e emojis) para Base64 e de volta, com suporte a UTF-8.", ["base64", "encoding", "programação"], "Usa TextEncoder para UTF-8 antes de codificar.", ["Olá → T2zDoQ=="], [["Base64 é criptografia?", "Não. É apenas uma codificação — qualquer pessoa pode decodificar."]], ["url-encode", "html-entities", "texto-para-binario"]),
-  t("url-encode", "URL encode / decode", "conversores", "Codifique caracteres para URLs.", "Escape e desescape caracteres especiais em URLs e parâmetros de query.", ["url", "encoding", "web"], "Usa encodeURIComponent e decodeURIComponent.", ["ação & efeito → a%C3%A7%C3%A3o%20%26%20efeito"], [["Diferença entre encodeURI e encodeURIComponent?", "encodeURI preserva : / ? & =; encodeURIComponent codifica tudo."]], ["base64", "gerador-de-utm", "gerador-de-slug"]),
-  t("json-formatter", "Formatador e validador JSON", "conversores", "Formate, minifique e valide JSON.", "Cole um JSON para indentar, minificar, validar e ver o erro exato quando inválido.", ["json", "api", "programação"], "Usa JSON.parse nativo e informa a posição do erro.", ["{\"a\":1} → formatado com 2 espaços"], [["Aceita comentários?", "JSON puro não aceita comentários. Remova-os antes."]], ["csv-para-json", "base64"]),
-  t("csv-para-json", "CSV para JSON", "conversores", "Converta tabelas CSV em JSON e o inverso.", "Transforme dados CSV (com cabeçalho) em um array JSON, ou um array JSON em CSV.", ["csv", "json", "dados"], "Detecta separador (vírgula, ponto e vírgula ou tab) automaticamente.", ["nome;idade\\nAna;30 → [{\"nome\":\"Ana\",\"idade\":\"30\"}]"], [["Campos com vírgula dentro?", "Coloque entre aspas duplas."]], ["json-formatter", "ordenar-linhas"]),
-  t("markdown-para-html", "Markdown para HTML", "conversores", "Converta Markdown em HTML com preview.", "Escreva em Markdown (títulos, listas, links, negrito, código) e obtenha o HTML equivalente com visualização.", ["markdown", "html", "escrita"], "Conversor leve local que cobre a sintaxe mais usada.", ["## Título → <h2>Título</h2>"], [["Suporta tabelas?", "Sim, tabelas simples com | e ---."]], ["html-entities", "gerador-de-slug"]),
-  t("html-entities", "HTML entities", "conversores", "Escape e unescape de caracteres HTML.", "Converta < > & \" em entidades HTML seguras e de volta.", ["html", "seguranca", "web"], "Substitui caracteres reservados por &lt; &gt; &amp; &quot;.", ["<b>Oi</b> → &lt;b&gt;Oi&lt;/b&gt;"], [["Por que escapar HTML?", "Para evitar injeção de código (XSS) ao exibir texto de usuários."]], ["base64", "url-encode", "markdown-para-html"]),
-  t("texto-para-binario", "Texto para binário e ASCII", "conversores", "Converta texto em binário, hex e códigos ASCII.", "Veja a representação binária, hexadecimal e decimal de cada caractere de um texto — e decodifique de volta.", ["binário", "ascii", "programação"], "Usa UTF-8 para caracteres fora do ASCII.", ["Oi → 01001111 01101001"], [["Por que acentos têm 2 bytes?", "Em UTF-8, caracteres fora do ASCII usam 2 a 4 bytes."]], ["base-numerica", "base64"]),
-  t("numero-romano", "Números romanos", "conversores", "Converta entre arábicos e romanos.", "Transforme números de 1 a 3999 em algarismos romanos e vice-versa.", ["romanos", "números", "educação"], "Usa a notação subtrativa padrão (IV, IX, XL...).", ["2026 = MMXXVI", "MCMXC = 1990"], [["Existe zero romano?", "Não. O sistema romano não tem símbolo para zero."]], ["numero-por-extenso", "base-numerica"]),
-  t("numero-por-extenso", "Número por extenso", "conversores", "Escreva valores e quantias em português.", "Converta números e valores em reais para texto por extenso — útil para cheques, contratos e recibos.", ["extenso", "português", "contratos"], "Suporta até bilhões e centavos.", ["1.250,50 → mil duzentos e cinquenta reais e cinquenta centavos"], [["Como escrever 100?", "Cem. Mas 101 é 'cento e um'."]], ["numero-romano", "porcentagem"]),
-  t("moeda", "Conversor de moedas", "conversores", "Converta valores com uma taxa que você informa.", "Calcule conversões entre moedas com a cotação do dia informada por você — sem depender de API externa.", ["câmbio", "dólar", "euro"], "Digite a cotação (ex.: 1 USD = 5,20 BRL) e o valor. A última taxa fica salva no navegador.", ["US$ 150 a 5,20 = R$ 780"], [["Por que não busca a cotação automaticamente?", "A plataforma é 100% front-end e não usa APIs externas. Consulte a taxa no seu banco ou no Banco Central."]], ["porcentagem", "inflacao"]),
-
-  /* ---------------------------------- Texto -------------------------------- */
-  t("contador-de-palavras", "Contador de palavras", "texto", "Palavras, caracteres, frases, parágrafos e tempo de leitura.", "Analise seu texto: contagem completa, densidade de palavras-chave e tempo estimado de leitura e fala.", ["contador", "escrita", "seo"], "Cole o texto e veja as métricas em tempo real, incluindo as palavras mais frequentes.", ["Redação do ENEM: até 30 linhas ≈ 400 palavras"], [["Como conta palavras com hífen?", "'Guarda-chuva' conta como uma palavra."]], ["contador-de-caracteres", "tempo-de-leitura", "frequencia-de-palavras"], { featured: true }),
-  t("contador-de-caracteres", "Contador de caracteres", "texto", "Com e sem espaços, limites de redes sociais.", "Conte caracteres e veja quanto resta para os limites do X/Twitter, Instagram, LinkedIn, meta description e SMS.", ["caracteres", "redes sociais", "limite"], "Contagem por code points (emojis contam como 1).", ["Meta description ideal: 150–160 caracteres"], [["Emoji conta quanto?", "Aqui conta 1, mas no X/Twitter alguns contam 2."]], ["contador-de-palavras", "gerador-de-meta-tags"]),
-  t("maiusculas-minusculas", "Maiúsculas e minúsculas", "texto", "MAIÚSCULAS, minúsculas, Título, Frase, camelCase, snake_case.", "Converta o texto entre formatos de capitalização e convenções de nomenclatura de programação.", ["capitalização", "formatação", "programação"], "Escolha o formato de saída; a conversão respeita acentos.", ["olá mundo → Olá Mundo → olaMundo → ola_mundo"], [["Title case ignora preposições?", "Sim, 'de', 'da', 'e', 'em' ficam em minúsculo no modo Título."]], ["gerador-de-slug", "limpar-texto"]),
-  t("limpar-texto", "Limpar e formatar texto", "texto", "Remova espaços extras, quebras, acentos e formatação.", "Normalize textos copiados de PDFs e sites: espaços duplos, linhas em branco, acentos, HTML e caracteres invisíveis.", ["limpeza", "formatação", "texto"], "Marque as operações desejadas e aplique em um clique.", ["Texto de PDF com quebras a cada linha → parágrafo contínuo"], [["Remove formatação do Word?", "Sim, ao colar aqui só o texto puro é mantido."]], ["remover-duplicatas", "maiusculas-minusculas"]),
-  t("remover-duplicatas", "Remover linhas duplicadas", "texto", "Elimine repetições de uma lista.", "Cole uma lista e remova linhas duplicadas, com opção de ignorar maiúsculas e espaços.", ["lista", "duplicatas", "dados"], "Mostra quantas linhas foram removidas.", ["Lista de e-mails com 320 linhas → 287 únicos"], [["Mantém a ordem original?", "Sim, mantém a primeira ocorrência."]], ["ordenar-linhas", "limpar-texto", "extrair-emails-urls"]),
-  t("inverter-texto", "Inverter texto", "texto", "Inverta caracteres, palavras ou linhas.", "Espelhe um texto por caractere, por palavra ou inverta a ordem das linhas.", ["texto", "diversão", "utilidade"], "Trata emojis e acentos corretamente ao inverter.", ["amor → roma"], [["Serve para checar palíndromos?", "Sim — ative a opção 'verificar palíndromo'."]], ["maiusculas-minusculas", "ordenar-linhas"]),
-  t("gerador-de-slug", "Gerador de slug", "texto", "URLs amigáveis a partir de títulos.", "Transforme títulos em slugs limpos para URLs e nomes de arquivo, removendo acentos e símbolos.", ["slug", "seo", "url"], "Remove acentos, converte para minúsculas e troca espaços por hífens.", ["Guia Completo de SEO em 2026 → guia-completo-de-seo-em-2026"], [["Slug com underscore ou hífen?", "Hífen. O Google trata hífen como separador de palavras."]], ["url-encode", "maiusculas-minusculas", "gerador-de-meta-tags"]),
-  t("lorem-ipsum", "Gerador de Lorem Ipsum", "texto", "Texto de preenchimento por parágrafos, frases ou palavras.", "Gere texto placeholder clássico ou em português para layouts e protótipos.", ["lorem", "design", "placeholder"], "Escolha a quantidade, a unidade e o idioma do texto.", ["3 parágrafos de Lorem Ipsum"], [["Existe Lorem em português?", "Sim, escolha 'português' para um texto neutro com palavras reais."]], ["contador-de-palavras", "gerador-de-titulos"]),
-  t("extrair-emails-urls", "Extrair e-mails, URLs e números", "texto", "Encontre padrões em qualquer texto.", "Extraia todos os e-mails, links, telefones ou hashtags de um texto colado, sem duplicatas.", ["regex", "e-mail", "dados"], "Usa expressões regulares e remove repetições.", ["Lista de 40 e-mails de um relatório"], [["Detecta telefones brasileiros?", "Sim, com ou sem DDD e o 9 adicional."]], ["remover-duplicatas", "ordenar-linhas"]),
-  t("ordenar-linhas", "Ordenar linhas", "texto", "Ordem alfabética, numérica, tamanho ou aleatória.", "Ordene listas de forma crescente, decrescente, natural (1, 2, 10) ou embaralhe.", ["lista", "ordenar", "dados"], "Ordenação natural entende números dentro do texto.", ["item10, item2 → item2, item10"], [["Ordena com acentos corretamente?", "Sim, usa localeCompare pt-BR."]], ["remover-duplicatas", "csv-para-json"]),
-  t("frequencia-de-palavras", "Frequência de palavras", "texto", "Palavras mais usadas e densidade de palavras-chave.", "Descubra quais palavras se repetem no seu texto, com filtro de stop words e visualização em barras.", ["seo", "análise", "palavras-chave"], "Ignora artigos e preposições por padrão.", ["'inteligência' aparece 12× (2,1%)"], [["Qual densidade ideal para SEO?", "Não há número mágico; entre 0,5% e 2% costuma ser natural."]], ["contador-de-palavras", "analisador-de-legibilidade"]),
-  t("resumidor-de-texto", "Resumidor de texto", "texto", "Resuma textos longos localmente por relevância.", "Gere um resumo extrativo escolhendo as frases mais representativas do texto — sem enviar nada para servidores.", ["resumo", "leitura", "ia"], "Pontua frases por frequência de termos e posição e seleciona as melhores até o tamanho desejado.", ["Artigo de 1.200 palavras → resumo em 5 frases"], [["É igual ao resumo do ChatGPT?", "Não. É extrativo (usa frases originais), mas funciona offline."]], ["tempo-de-leitura", "analisador-de-legibilidade"]),
-  t("tempo-de-leitura", "Tempo de leitura", "texto", "Minutos de leitura e de fala de um texto.", "Estime o tempo de leitura silenciosa e de leitura em voz alta para artigos, roteiros e apresentações.", ["leitura", "roteiro", "apresentação"], "200 palavras/min para leitura e 130 para fala, ajustáveis.", ["1.000 palavras ≈ 5 min de leitura / 8 min falado"], [["Quanto texto para um vídeo de 10 min?", "Cerca de 1.300 palavras."]], ["contador-de-palavras", "roteiro-de-video"]),
-  t("comparar-textos", "Comparar textos (diff)", "texto", "Veja diferenças linha a linha entre duas versões.", "Compare dois textos e destaque linhas adicionadas, removidas e iguais.", ["diff", "comparação", "revisão"], "Algoritmo LCS por linhas, executado localmente.", ["Versão 1 × versão 2 de um contrato"], [["Compara palavra a palavra?", "A comparação é por linha; ative 'por palavra' para textos curtos."]], ["localizar-substituir", "limpar-texto"]),
-  t("localizar-substituir", "Localizar e substituir", "texto", "Substituições em massa com suporte a regex.", "Encontre e substitua palavras ou padrões em textos grandes, com opção de expressão regular e diferenciar maiúsculas.", ["regex", "substituir", "texto"], "Mostra quantas ocorrências foram substituídas.", ["Trocar 'cliente' por 'usuário' em 48 lugares"], [["Como usar grupos regex?", "Use $1, $2 na substituição para referenciar grupos capturados."]], ["comparar-textos", "extrair-emails-urls"]),
-
-  /* -------------------------------- Geradores ------------------------------ */
-  t("gerador-de-senha", "Gerador de senha", "geradores", "Senhas fortes e frases-senha com medidor de força.", "Crie senhas aleatórias seguras com controle de tamanho e caracteres, ou frases-senha memoráveis. Tudo gerado localmente.", ["senha", "segurança", "privacidade"], "Usa crypto.getRandomValues. A entropia (bits) estima o tempo para quebrar.", ["20 caracteres com símbolos ≈ 130 bits", "Frase: cavalo-bateria-correto-grampo"], [["A senha é enviada para algum servidor?", "Não. Tudo é gerado no seu navegador."], ["Qual tamanho usar?", "Mínimo 16 caracteres, ou 4+ palavras em frase-senha."]], ["nome-de-usuario", "uuid", "validador-de-cpf-cnpj"], { featured: true }),
-  t("qr-code", "Gerador de QR Code", "geradores", "QR para links, Wi-Fi, texto, e-mail e PIX-like.", "Gere QR Codes em alta resolução para URLs, texto, redes Wi-Fi, contatos e e-mails. Baixe em PNG ou SVG.", ["qr code", "wifi", "compartilhar"], "Renderizado localmente com níveis de correção de erro ajustáveis.", ["QR do Wi-Fi da sua casa", "QR do link do cardápio"], [["Qual nível de correção usar?", "M para uso geral; H se o código terá logo ou pode ser danificado."]], ["gerador-de-utm", "url-encode"], { featured: true }),
-  t("uuid", "Gerador de UUID", "geradores", "UUID v4 em lote e outros IDs.", "Gere identificadores únicos (UUID v4, NanoID-like, ULID-like) em quantidade.", ["uuid", "id", "programação"], "crypto.randomUUID() quando disponível.", ["10 UUIDs de uma vez"], [["UUID v4 pode repetir?", "A probabilidade é tão baixa que é considerada nula na prática."]], ["gerador-de-senha", "gerador-de-numeros-aleatorios"]),
-  t("gerador-de-numeros-aleatorios", "Números aleatórios", "geradores", "Números em intervalo, com ou sem repetição.", "Gere um ou vários números aleatórios entre um mínimo e máximo, para jogos, testes e sorteios.", ["aleatório", "números", "sorteio"], "Gerador criptográfico do navegador.", ["6 números entre 1 e 60 sem repetir"], [["Posso gerar decimais?", "Sim, ative a opção de casas decimais."]], ["sorteador", "uuid"]),
-  t("gerador-de-ideias", "Gerador de ideias de conteúdo", "geradores", "Ideias de posts, vídeos e artigos por tema.", "Combine ângulos, formatos e públicos para gerar dezenas de ideias de conteúdo a partir de um tema.", ["conteúdo", "criatividade", "marketing"], "Combina o tema com matrizes de ângulos (erros, guia, comparativo, bastidores...) e formatos.", ["Tema 'produtividade' → 20 ideias"], [["As ideias vêm de IA?", "São geradas por combinações locais — sem API."]], ["gerador-de-titulos", "gerador-de-hashtags"]),
-  t("nomes-de-negocio", "Gerador de nomes de negócio", "geradores", "Nomes para marcas, apps e projetos.", "Gere sugestões de nomes combinando palavras-chave com sufixos, prefixos e estilos, e verifique o slug.", ["marca", "naming", "startup"], "Combina termos com padrões (composto, abreviado, inventado, latino).", ["nuvem + dados → Nuvia, DataNuvem, Nuvex"], [["Verifica disponibilidade de domínio?", "Não — copie o nome e verifique no registrador."]], ["nome-de-usuario", "gerador-de-slug"]),
-  t("nome-de-usuario", "Gerador de nome de usuário", "geradores", "Usernames disponíveis e criativos.", "Gere handles para redes sociais e jogos a partir do seu nome ou interesses.", ["username", "redes sociais", "gamer"], "Mistura palavras, números e separadores conforme o estilo.", ["ana + design → ana.design, anadsgn, ana_ux"], [["Aceita acentos?", "Não — usernames são normalizados sem acentos."]], ["nomes-de-negocio", "gerador-de-senha"]),
-  t("paleta-de-cores", "Gerador de paleta de cores", "geradores", "Paletas harmônicas a partir de uma cor.", "Crie paletas complementares, análogas, triádicas e escalas de tons a partir de uma cor base, com export CSS.", ["cores", "design", "css"], "Calcula harmonias no espaço HSL e gera variáveis CSS.", ["Base #1d4ed8 → 5 tons + complementar"], [["Como exportar?", "Copie as variáveis CSS ou o JSON."]], ["cores", "gradiente-css", "box-shadow-css"]),
-  t("gradiente-css", "Gerador de gradiente CSS", "geradores", "Gradientes lineares e radiais com preview.", "Monte gradientes com múltiplas cores, ângulo e tipo e copie o CSS pronto.", ["css", "design", "gradiente"], "Gera background: linear-gradient(...) ou radial-gradient(...).", ["linear-gradient(135deg, #1d4ed8, #7c3aed)"], [["Funciona em todos os navegadores?", "Sim, gradientes CSS têm suporte universal."]], ["paleta-de-cores", "box-shadow-css", "cores"]),
-  t("box-shadow-css", "Gerador de box-shadow", "geradores", "Sombras CSS realistas com camadas.", "Ajuste deslocamento, blur, spread, cor e opacidade e gere sombras suaves em camadas.", ["css", "design", "sombra"], "Combina até 3 camadas para sombras mais naturais.", ["0 10px 30px -10px rgba(0,0,0,.25)"], [["Por que usar várias camadas?", "Camadas com blur diferentes simulam melhor a luz real."]], ["gradiente-css", "paleta-de-cores"]),
-  t("gerador-de-hashtags", "Gerador de hashtags", "geradores", "Hashtags relevantes por nicho.", "Gere conjuntos de hashtags por nicho e tamanho (populares, médias e de nicho) para Instagram e TikTok.", ["hashtags", "instagram", "tiktok"], "Combina termos do seu nicho com listas curadas por categoria.", ["#marketingdigital #dicasdemarketing #empreendedorismo"], [["Quantas hashtags usar?", "De 5 a 15 hashtags relevantes tendem a performar melhor que 30 genéricas."]], ["gerador-de-ideias", "gerador-de-bio"]),
-  t("gerador-de-titulos", "Gerador de títulos", "geradores", "Headlines para artigos, vídeos e anúncios.", "Gere títulos com fórmulas comprovadas (número, como fazer, pergunta, contraste) a partir do seu tema.", ["copywriting", "títulos", "seo"], "Aplica 20+ fórmulas de headline ao seu tema e público.", ["'7 erros de SEO que custam tráfego (e como corrigir)'"], [["Qual tamanho ideal para SEO?", "Até 60 caracteres para não ser cortado no Google."]], ["gerador-de-meta-tags", "gerador-de-ideias"]),
-  t("gerador-de-bio", "Gerador de bio", "geradores", "Bios para Instagram, LinkedIn e X.", "Crie bios curtas e impactantes a partir de profissão, diferencial e chamada para ação.", ["bio", "instagram", "linkedin"], "Monta variações por tom (profissional, criativo, direto).", ["Designer de produto · Ajudo startups a lançar mais rápido · ↓ portfólio"], [["Limite da bio do Instagram?", "150 caracteres."]], ["gerador-de-hashtags", "post-linkedin", "nome-de-usuario"]),
-  t("gerador-de-meta-tags", "Gerador de meta tags", "geradores", "Title, description, Open Graph e Twitter Card.", "Preencha título, descrição e imagem e receba as meta tags HTML prontas com contador de caracteres.", ["seo", "html", "open graph"], "Gera tags de SEO e redes sociais com validação de tamanho.", ["Title 58 caracteres ✓ · Description 152 ✓"], [["Preciso de og:image?", "Sim, para prévias ricas no WhatsApp, LinkedIn e X."]], ["gerador-de-titulos", "gerador-de-slug", "gerador-de-utm"]),
-  t("gerador-de-utm", "Gerador de UTM", "geradores", "Links rastreáveis para campanhas.", "Construa URLs com parâmetros UTM (source, medium, campaign, term, content) padronizados.", ["utm", "analytics", "marketing"], "Normaliza os valores para minúsculas e codifica caracteres especiais.", ["?utm_source=instagram&utm_medium=social&utm_campaign=lancamento"], [["Qual a diferença entre source e medium?", "Source é a origem (google); medium é o canal (cpc, email, social)."]], ["url-encode", "qr-code", "gerador-de-meta-tags"]),
-  t("assinatura-de-email", "Gerador de assinatura de e-mail", "geradores", "Assinatura HTML profissional para copiar.", "Monte uma assinatura de e-mail limpa com nome, cargo, empresa, telefone e links — e copie o HTML.", ["e-mail", "assinatura", "profissional"], "Gera HTML compatível com Gmail e Outlook (tabelas e estilos inline).", ["Ana Souza · Head de Marketing · Nexo"], [["Funciona no Outlook?", "Sim, o HTML usa apenas recursos amplamente suportados."]], ["gerador-de-bio", "qr-code"]),
-  t("validador-de-cpf-cnpj", "Validador de CPF e CNPJ", "geradores", "Valide dígitos verificadores e gere números de teste.", "Verifique se um CPF ou CNPJ é válido matematicamente e gere números válidos para testes de software.", ["cpf", "cnpj", "validação"], "Calcula os dígitos verificadores pelo algoritmo oficial. Números gerados são apenas para testes.", ["123.456.789-09 → válido"], [["Válido significa que existe?", "Não. Apenas que os dígitos verificadores conferem."]], ["gerador-de-senha", "uuid"]),
-
-  /* ------------------------------------ IA --------------------------------- */
-  t("gerador-de-prompt-de-imagem", "Gerador de prompt de imagem", "ia", "Prompts para Midjourney, DALL·E, Stable Diffusion e Flux.", "Monte prompts de imagem estruturados: sujeito, estilo, iluminação, câmera, composição e parâmetros por plataforma.", ["midjourney", "prompt", "imagem"], "Combina suas escolhas em um prompt otimizado, com negative prompt quando a plataforma suporta.", ["Retrato cinematográfico, luz lateral, 85mm, --ar 3:2"], [["Funciona para Midjourney v7?", "Sim, incluímos os parâmetros --ar, --stylize e --v."]], ["melhorar-prompt", "gerador-de-system-prompt"], { featured: true }),
-  t("melhorar-prompt", "Melhorador de prompt", "ia", "Transforme um pedido vago em um prompt completo.", "Cole um prompt simples e receba uma versão estruturada com papel, contexto, tarefa, formato e critérios.", ["prompt", "chatgpt", "claude"], "Aplica o framework RCTF (Role, Context, Task, Format) e adiciona restrições úteis.", ["'escreve um email' → prompt com tom, público e estrutura"], [["Serve para qualquer modelo?", "Sim: ChatGPT, Claude, Gemini, Llama..."]], ["gerador-de-system-prompt", "gerador-de-prompt-de-imagem", "estimador-de-tokens"]),
-  t("gerador-de-system-prompt", "Gerador de system prompt", "ia", "Instruções de sistema para assistentes e agentes.", "Crie system prompts robustos definindo persona, escopo, regras, formato de resposta e tratamento de casos limite.", ["system prompt", "agentes", "ia"], "Estrutura em seções claras que modelos seguem bem.", ["Assistente de suporte para SaaS de finanças"], [["O que não colocar no system prompt?", "Dados sensíveis e instruções contraditórias."]], ["melhorar-prompt", "gerador-de-persona"]),
-  t("estimador-de-tokens", "Estimador de tokens", "ia", "Estime tokens de um texto para GPT, Claude e Gemini.", "Calcule aproximadamente quantos tokens um texto consome e se cabe na janela de contexto de cada modelo.", ["tokens", "llm", "custo"], "Heurística por caracteres e palavras calibrada para português (≈ 3,5 caracteres por token).", ["1.000 palavras ≈ 1.600 tokens em português"], [["Por que português gasta mais tokens?", "Tokenizadores são otimizados para inglês; acentos e sufixos quebram em mais pedaços."]], ["custo-de-api-ia", "melhorar-prompt"]),
-  t("custo-de-api-ia", "Custo de API de IA", "ia", "Calcule o gasto mensal com modelos de linguagem.", "Simule o custo de uso de APIs (GPT, Claude, Gemini, Llama) por volume de requisições e tokens de entrada/saída.", ["custo", "api", "llm"], "Preços por milhão de tokens editáveis — os valores padrão são referências e podem estar desatualizados.", ["10 mil req/dia × 1.500 tokens → US$ 450/mês"], [["Os preços estão atualizados?", "São referências; edite com os valores atuais do provedor."]], ["estimador-de-tokens", "comparador-de-modelos"]),
-  t("comparador-de-modelos", "Comparador de modelos de IA", "ia", "Compare modelos por contexto, custo e uso ideal.", "Tabela interativa de modelos de linguagem com filtros por contexto, modalidade, licença e faixa de preço.", ["llm", "comparativo", "modelos"], "Dados locais de referência editorial; filtre e ordene a tabela.", ["Modelos com contexto ≥ 200k e open weights"], [["Os dados são em tempo real?", "Não. São curados pela equipe e revisados periodicamente."]], ["custo-de-api-ia", "estimador-de-tokens"], { isNew: true }),
-  t("gerador-de-persona", "Gerador de persona", "ia", "Personas de cliente para marketing e produto.", "Crie personas completas com dores, objetivos, canais, objeções e mensagens que funcionam.", ["persona", "marketing", "produto"], "Estrutura o perfil a partir de segmento, cargo e problema principal.", ["Persona: gestora de marketing em PME de serviços"], [["Devo validar a persona?", "Sim — entreviste clientes reais para confirmar as hipóteses."]], ["gerador-de-system-prompt", "email-frio"]),
-  t("roteiro-de-video", "Gerador de roteiro de vídeo", "ia", "Estrutura para Reels, Shorts, YouTube e anúncios.", "Gere um roteiro com gancho, desenvolvimento, prova e CTA calibrado para a duração e a plataforma.", ["roteiro", "youtube", "reels"], "Aplica estruturas testadas (AIDA, PAS, storytelling) à sua ideia e duração.", ["Reels de 30 s sobre economia doméstica"], [["Quantas palavras por minuto?", "Cerca de 130 a 150 para fala natural."]], ["tempo-de-leitura", "post-linkedin", "gerador-de-titulos"]),
-  t("post-linkedin", "Gerador de post para LinkedIn", "ia", "Posts com gancho, história e chamada.", "Transforme uma ideia ou aprendizado em um post no formato que funciona no LinkedIn.", ["linkedin", "conteúdo", "carreira"], "Formata com gancho curto, linhas espaçadas, lista e CTA.", ["Aprendizado de projeto → post de 900 caracteres"], [["Qual o tamanho ideal?", "Entre 900 e 1.300 caracteres, com o gancho nas 2 primeiras linhas."]], ["gerador-de-bio", "roteiro-de-video", "email-frio"]),
-  t("email-frio", "Gerador de e-mail frio", "ia", "Cold e-mails curtos e personalizados.", "Monte e-mails de prospecção com personalização, proposta de valor e pedido claro em menos de 120 palavras.", ["vendas", "e-mail", "prospecção"], "Estrutura: gancho pessoal → problema → prova → CTA de baixo atrito.", ["E-mail para diretor de operações de logística"], [["Qual tamanho ideal?", "Menos de 120 palavras e um único pedido."]], ["gerador-de-persona", "post-linkedin"]),
-  t("analisador-de-legibilidade", "Analisador de legibilidade", "ia", "Nível de leitura, frases longas e voz passiva.", "Avalie a clareza de um texto: índice de legibilidade adaptado ao português, frases longas e palavras difíceis.", ["escrita", "clareza", "conteúdo"], "Calcula Flesch adaptado (Martins et al.) e destaca frases acima de 25 palavras.", ["Texto jurídico: 35 (difícil) → reescrito: 62 (fácil)"], [["Qual pontuação buscar?", "Acima de 60 para público geral."]], ["frequencia-de-palavras", "detector-de-tom", "resumidor-de-texto"]),
-  t("detector-de-tom", "Detector de tom", "ia", "Formal, informal, positivo, urgente…", "Analise o tom predominante de um texto por léxico e pontuação, com sugestões de ajuste.", ["tom", "escrita", "comunicação"], "Usa dicionários de palavras e sinais (exclamações, imperativos, jargão).", ["E-mail soa agressivo? Verifique antes de enviar."], [["É uma IA?", "É uma análise léxica local, útil como triagem rápida."]], ["analisador-de-legibilidade", "melhorar-prompt"]),
-
-  /* ------------------------------ Produtividade ---------------------------- */
-  t("pomodoro", "Timer Pomodoro", "produtividade", "Ciclos de foco e pausa com histórico do dia.", "Trabalhe em blocos de 25 minutos com pausas, sons opcionais e contagem de pomodoros concluídos.", ["foco", "pomodoro", "tempo"], "Ciclos configuráveis; o estado persiste ao trocar de aba.", ["4 pomodoros pela manhã = 100 min de foco"], [["Por que 25 minutos?", "É curto o bastante para começar e longo o bastante para avançar."]], ["cronometro", "lista-de-tarefas", "rastreador-de-habitos"], { featured: true }),
-  t("cronometro", "Cronômetro e timer", "produtividade", "Cronômetro com voltas e timer regressivo.", "Marque voltas, pause e retome; ou defina um timer com alerta ao final.", ["tempo", "cronômetro", "timer"], "Precisão baseada em performance.now().", ["Treino intervalado 8 × 40 s"], [["Continua rodando em segundo plano?", "Sim, o tempo é calculado pelo relógio real."]], ["pomodoro", "calculadora-de-horas"]),
-  t("lista-de-tarefas", "Lista de tarefas", "produtividade", "To-do com prioridades, filtros e progresso.", "Organize tarefas com prioridade, conclusão e limpeza de concluídas. Salvas no navegador.", ["tarefas", "to-do", "organização"], "Persistência local; arraste para reordenar.", ["Planejamento do dia em 5 tarefas"], [["Sincroniza entre dispositivos?", "Não — os dados ficam apenas neste navegador."]], ["matriz-eisenhower", "pomodoro", "notas-rapidas"]),
-  t("notas-rapidas", "Notas rápidas", "produtividade", "Bloco de notas com salvamento automático.", "Anote ideias e trechos com salvamento automático, contagem de palavras e exportação.", ["notas", "escrita", "rascunho"], "Salva a cada alteração no localStorage.", ["Rascunho de e-mail antes de enviar"], [["Posso exportar?", "Sim, baixe como .txt ou .md."]], ["lista-de-tarefas", "contador-de-palavras"]),
-  t("matriz-eisenhower", "Matriz de Eisenhower", "produtividade", "Priorize por urgência e importância.", "Distribua tarefas nos quatro quadrantes (fazer, agendar, delegar, eliminar) e foque no que importa.", ["prioridade", "gestão", "foco"], "Arraste ou clique para mover tarefas entre quadrantes. Persistência local.", ["Fazer agora: entregar proposta", "Agendar: estudar"], [["O que vai em 'eliminar'?", "Tarefas nem urgentes nem importantes: interrupções e distrações."]], ["lista-de-tarefas", "gerador-de-okr"]),
-  t("roleta-de-decisao", "Roleta de decisão", "produtividade", "Deixe o acaso escolher entre opções.", "Adicione opções, gire a roleta animada e obtenha uma escolha aleatória justa.", ["decisão", "sorteio", "diversão"], "Animação com desaceleração e resultado criptograficamente aleatório.", ["Onde almoçar? 5 opções"], [["Posso remover opções?", "Sim, edite a lista a qualquer momento."]], ["sorteador", "gerador-de-numeros-aleatorios"]),
-  t("gerador-de-okr", "Gerador de OKR", "produtividade", "Objetivos e resultados-chave bem escritos.", "Transforme uma meta vaga em um OKR com objetivo inspirador e 3 resultados-chave mensuráveis.", ["okr", "metas", "gestão"], "Sugere KRs com métrica, baseline e alvo a partir do seu objetivo e área.", ["Aumentar retenção: KR1 churn 6% → 4%"], [["Quantos KRs por objetivo?", "De 2 a 4, todos mensuráveis."]], ["matriz-eisenhower", "calculadora-de-metas"]),
-  t("rastreador-de-habitos", "Rastreador de hábitos", "produtividade", "Marque hábitos diários e veja sequências.", "Acompanhe hábitos com grade semanal, sequência atual e taxa de conclusão. Dados locais.", ["hábitos", "rotina", "saúde"], "Cada dia é uma célula clicável; a sequência (streak) é calculada automaticamente.", ["Ler 20 min · Treinar · Beber água"], [["Quantos hábitos começar?", "De 1 a 3. Mais que isso costuma falhar."]], ["pomodoro", "lista-de-tarefas", "calculadora-de-metas"], { isNew: true }),
-  t("calculadora-de-metas", "Calculadora de metas", "produtividade", "Quanto fazer por dia para bater uma meta.", "Divida uma meta (páginas, km, reais, palavras) pelo prazo e veja o ritmo diário e semanal necessário.", ["metas", "planejamento", "hábitos"], "Considera dias úteis ou corridos e mostra o progresso se informar o atual.", ["Ler 24 livros no ano → 2 por mês → ~10 páginas/dia"], [["E se eu atrasar?", "Informe o progresso atual e recalculamos o ritmo."]], ["gerador-de-okr", "rastreador-de-habitos", "dias-uteis"]),
+const genericFaq = (name: string) => [
+  { q: `O ${name} é gratuito?`, a: `Sim. Todas as ferramentas do Nexo são gratuitas, sem cadastro e sem limite de uso.` },
+  { q: "Meus dados são enviados para algum servidor?", a: "Não. O cálculo acontece inteiramente no seu navegador. Nada é enviado ou armazenado fora do seu dispositivo." },
+  { q: "Funciona no celular?", a: "Sim. A interface é responsiva e foi testada em telas pequenas, com botões de copiar e limpar acessíveis." },
 ];
 
-export const toolBySlug = (slug: string) => TOOLS.find((t) => t.slug === slug);
-export const toolsByCategory = (cat: ToolCategory) => TOOLS.filter((t) => t.category === cat);
-export const toolCategory = (slug: ToolCategory) => TOOL_CATEGORIES.find((c) => c.slug === slug)!;
+function def(t: Partial): ToolMeta {
+  return {
+    howTo: t.howTo ?? ["Preencha os campos com os valores desejados.", "O resultado é calculado automaticamente enquanto você digita.", "Use “Copiar” para levar o resultado ou “Limpar” para recomeçar."],
+    examples: t.examples ?? [],
+    related: t.related ?? [],
+    ...t,
+    faq: [...(t.faq ?? []), ...genericFaq(t.name)],
+  };
+}
+
+export const tools: ToolMeta[] = [
+  /* ---------------- CALCULADORAS ---------------- */
+  def({
+    slug: "calculadora-de-porcentagem", name: "Calculadora de Porcentagem", short: "Quanto é X% de Y, variação e proporção.",
+    description: "Calcule quanto é X% de um valor, qual porcentagem um número representa de outro e a variação percentual entre dois valores — tudo em uma única tela.",
+    category: "calculadoras", tags: ["porcentagem", "matemática", "finanças"], icon: "Percent", popularity: 98,
+    examples: ["Quanto é 15% de 240? → 36", "30 é quanto por cento de 120? → 25%", "De 80 para 100 a variação é +25%"],
+    faq: [{ q: "Como calcular porcentagem de um valor?", a: "Multiplique o valor pela porcentagem e divida por 100. Ex.: 15% de 240 = 240 × 15 ÷ 100 = 36." }, { q: "Como calcular variação percentual?", a: "(novo − antigo) ÷ antigo × 100. De 80 para 100: (100 − 80) ÷ 80 × 100 = 25%." }],
+    related: ["calculadora-de-desconto", "aumento-percentual", "regra-de-tres"],
+  }),
+  def({
+    slug: "calculadora-de-desconto", name: "Calculadora de Desconto", short: "Preço final, valor economizado e descontos em cascata.",
+    description: "Descubra o preço final após um desconto, quanto você economiza e aplique um segundo desconto cumulativo (ex.: 20% + 10%).",
+    category: "calculadoras", tags: ["desconto", "compras", "preço"], icon: "Tag", popularity: 92,
+    examples: ["R$ 199,90 com 25% de desconto → R$ 149,93", "20% + 10% não é 30%: é 28%"],
+    faq: [{ q: "Dois descontos somam?", a: "Não. Descontos sucessivos são multiplicativos: 20% + 10% = 1 − (0,8 × 0,9) = 28% de desconto total." }],
+    related: ["calculadora-de-porcentagem", "margem-de-lucro", "markup"],
+  }),
+  def({
+    slug: "juros-simples", name: "Calculadora de Juros Simples", short: "Juros, montante e taxa em regime simples.",
+    description: "Calcule juros simples, montante final e compare com juros compostos a partir de capital, taxa e período.",
+    category: "calculadoras", tags: ["juros", "finanças", "investimento"], icon: "TrendingUp", popularity: 80,
+    examples: ["R$ 1.000 a 2% ao mês por 12 meses → juros de R$ 240"],
+    faq: [{ q: "Qual a fórmula de juros simples?", a: "J = C × i × t, onde C é o capital, i a taxa por período (decimal) e t o número de períodos." }],
+    related: ["juros-compostos", "simulador-de-financiamento", "calculadora-de-roi"],
+  }),
+  def({
+    slug: "juros-compostos", name: "Calculadora de Juros Compostos", short: "Montante com aportes mensais e evolução ano a ano.",
+    description: "Simule o crescimento de um investimento com juros compostos, aportes mensais e veja a evolução do patrimônio período a período.",
+    category: "calculadoras", tags: ["juros compostos", "investimento", "finanças"], icon: "LineChart", popularity: 96,
+    examples: ["R$ 5.000 iniciais + R$ 500/mês a 0,9% a.m. por 10 anos → mais de R$ 100 mil"],
+    faq: [{ q: "Qual a fórmula de juros compostos?", a: "M = C × (1 + i)^t. Com aportes mensais P: M = C(1+i)^t + P × [((1+i)^t − 1) ÷ i]." }, { q: "Como converter taxa anual para mensal?", a: "i_mensal = (1 + i_anual)^(1/12) − 1. 12% a.a. ≈ 0,949% a.m." }],
+    related: ["juros-simples", "meta-de-economia", "calculadora-de-roi"],
+  }),
+  def({
+    slug: "regra-de-tres", name: "Regra de Três", short: "Simples, direta ou inversa.",
+    description: "Resolva proporções com regra de três simples direta ou inversa, com explicação passo a passo do cálculo.",
+    category: "calculadoras", tags: ["proporção", "matemática", "escola"], icon: "Divide", popularity: 85,
+    examples: ["Se 3 kg custam R$ 27, 5 kg custam R$ 45 (direta)", "Se 4 pedreiros levam 6 dias, 8 levam 3 (inversa)"],
+    faq: [{ q: "Quando usar regra de três inversa?", a: "Quando uma grandeza aumenta e a outra diminui na mesma proporção, como número de trabalhadores × dias de obra." }],
+    related: ["calculadora-de-porcentagem", "media-ponderada"],
+  }),
+  def({
+    slug: "calculadora-de-imc", name: "Calculadora de IMC", short: "Índice de massa corporal e faixa de peso ideal.",
+    description: "Calcule seu IMC, veja a classificação da OMS e a faixa de peso considerada saudável para a sua altura.",
+    category: "calculadoras", tags: ["saúde", "imc", "peso"], icon: "HeartPulse", popularity: 88,
+    examples: ["70 kg e 1,75 m → IMC 22,9 (peso normal)"],
+    faq: [{ q: "O IMC é preciso?", a: "É uma triagem populacional. Não diferencia massa muscular de gordura — atletas podem ter IMC alto sem excesso de gordura." }],
+    related: ["calculadora-de-idade", "calculadora-de-agua"],
+  }),
+  def({
+    slug: "calculadora-de-agua", name: "Ingestão Diária de Água", short: "Quantidade recomendada de água por dia.",
+    description: "Estime a quantidade de água recomendada por dia a partir do peso corporal e nível de atividade física.",
+    category: "calculadoras", tags: ["saúde", "hidratação"], icon: "Droplets", popularity: 62,
+    examples: ["70 kg, atividade moderada → ~2,8 L/dia"],
+    related: ["calculadora-de-imc"],
+  }),
+  def({
+    slug: "media-ponderada", name: "Média Ponderada", short: "Média com pesos diferentes para cada nota.",
+    description: "Calcule médias simples ou ponderadas de até 8 valores, ideal para notas escolares e indicadores.",
+    category: "calculadoras", tags: ["média", "notas", "escola"], icon: "Sigma", popularity: 70,
+    examples: ["Notas 7 (peso 2), 8 (peso 3), 6 (peso 5) → média 6,8"],
+    related: ["regra-de-tres", "calculadora-de-porcentagem"],
+  }),
+  def({
+    slug: "margem-de-lucro", name: "Margem de Lucro", short: "Margem bruta e lucro a partir de custo e preço.",
+    description: "Calcule margem de lucro, lucro em reais e preço de venda necessário para atingir a margem desejada.",
+    category: "calculadoras", tags: ["negócios", "preço", "lucro"], icon: "PiggyBank", popularity: 78,
+    examples: ["Custo R$ 60, venda R$ 100 → margem 40%, markup 66,7%"],
+    faq: [{ q: "Margem e markup são a mesma coisa?", a: "Não. Margem é lucro ÷ preço de venda; markup é lucro ÷ custo. Com custo 60 e venda 100, margem = 40% e markup = 66,7%." }],
+    related: ["markup", "calculadora-de-desconto", "calculadora-de-roi"],
+  }),
+  def({
+    slug: "markup", name: "Calculadora de Markup", short: "Preço de venda a partir do custo e markup.",
+    description: "Defina preços aplicando markup sobre o custo e veja a margem equivalente.",
+    category: "calculadoras", tags: ["negócios", "preço"], icon: "Receipt", popularity: 60,
+    related: ["margem-de-lucro", "calculadora-de-desconto"],
+  }),
+  def({
+    slug: "simulador-de-financiamento", name: "Simulador de Financiamento", short: "Parcela, total pago e juros (Tabela Price).",
+    description: "Simule parcelas fixas de financiamento ou empréstimo pelo sistema Price, com total pago e custo dos juros.",
+    category: "calculadoras", tags: ["financiamento", "empréstimo", "parcelas"], icon: "Landmark", popularity: 90,
+    examples: ["R$ 30.000 em 48× a 1,5% a.m. → parcela ≈ R$ 880,58"],
+    faq: [{ q: "O que é Tabela Price?", a: "Sistema de parcelas fixas em que a parte de juros diminui e a amortização aumenta ao longo do contrato." }],
+    related: ["juros-compostos", "juros-simples"],
+  }),
+  def({
+    slug: "calculadora-de-roi", name: "Calculadora de ROI", short: "Retorno sobre investimento em % e múltiplo.",
+    description: "Calcule o retorno sobre investimento (ROI) de campanhas, projetos ou aplicações.",
+    category: "calculadoras", tags: ["marketing", "investimento", "roi"], icon: "BadgeDollarSign", popularity: 72,
+    examples: ["Investiu R$ 2.000, retornou R$ 5.000 → ROI 150%"],
+    related: ["margem-de-lucro", "juros-compostos"],
+  }),
+  def({
+    slug: "aumento-percentual", name: "Aumento e Redução Percentual", short: "Aplique aumento ou redução sobre um valor.",
+    description: "Aplique aumento ou redução percentual e descubra o valor original a partir do resultado.",
+    category: "calculadoras", tags: ["porcentagem", "reajuste"], icon: "ArrowUpRight", popularity: 68,
+    related: ["calculadora-de-porcentagem", "calculadora-de-desconto"],
+  }),
+  def({
+    slug: "divisao-de-conta", name: "Divisão de Conta e Gorjeta", short: "Rateio por pessoa com taxa de serviço.",
+    description: "Divida a conta do restaurante entre pessoas incluindo a taxa de serviço ou gorjeta.",
+    category: "calculadoras", tags: ["gorjeta", "conta", "restaurante"], icon: "Utensils", popularity: 65,
+    related: ["calculadora-de-porcentagem"],
+  }),
+  def({
+    slug: "meta-de-economia", name: "Meta de Economia", short: "Quanto guardar por mês para atingir uma meta.",
+    description: "Descubra quanto precisa guardar por mês para atingir um objetivo financeiro em um prazo, com ou sem rendimento.",
+    category: "calculadoras", tags: ["finanças pessoais", "economia"], icon: "Target", popularity: 66,
+    related: ["juros-compostos", "simulador-de-financiamento"],
+  }),
+  def({
+    slug: "consumo-de-combustivel", name: "Consumo de Combustível", short: "km/l, custo por km e custo da viagem.",
+    description: "Calcule o consumo do seu carro, o custo por quilômetro e quanto vai gastar em uma viagem.",
+    category: "calculadoras", tags: ["carro", "viagem", "combustível"], icon: "Fuel", popularity: 64,
+    related: ["etanol-ou-gasolina"],
+  }),
+  def({
+    slug: "etanol-ou-gasolina", name: "Etanol ou Gasolina?", short: "Qual compensa mais abastecer hoje.",
+    description: "Compare o preço do etanol e da gasolina usando a regra dos 70% e descubra qual compensa.",
+    category: "calculadoras", tags: ["carro", "combustível"], icon: "Fuel", popularity: 70,
+    faq: [{ q: "Por que 70%?", a: "O etanol rende cerca de 70% da gasolina. Se o preço do etanol for menor que 70% do da gasolina, ele compensa." }],
+    related: ["consumo-de-combustivel"],
+  }),
+  def({
+    slug: "calculadora-de-horas", name: "Calculadora de Horas", short: "Some e subtraia horas e minutos.",
+    description: "Some, subtraia e calcule intervalos de horas e minutos — útil para folha de ponto e freelancers.",
+    category: "calculadoras", tags: ["horas", "trabalho", "ponto"], icon: "Clock", popularity: 74,
+    related: ["diferenca-entre-datas", "valor-hora"],
+  }),
+  def({
+    slug: "valor-hora", name: "Calculadora de Valor-Hora", short: "Quanto cobrar por hora como freelancer.",
+    description: "Calcule seu valor-hora a partir da renda desejada, custos fixos, horas produtivas e férias.",
+    category: "calculadoras", tags: ["freelancer", "preço", "trabalho"], icon: "Briefcase", popularity: 69,
+    related: ["calculadora-de-horas", "margem-de-lucro"],
+  }),
+
+  /* ---------------- DATAS ---------------- */
+  def({
+    slug: "calculadora-de-idade", name: "Calculadora de Idade", short: "Idade exata em anos, meses e dias.",
+    description: "Calcule sua idade exata em anos, meses, dias, total de dias vividos e quanto falta para o próximo aniversário.",
+    category: "datas", tags: ["idade", "aniversário", "datas"], icon: "Cake", popularity: 90,
+    related: ["diferenca-entre-datas", "dia-da-semana", "contagem-regressiva"],
+  }),
+  def({
+    slug: "diferenca-entre-datas", name: "Diferença entre Datas", short: "Dias, semanas, meses e anos entre duas datas.",
+    description: "Calcule o intervalo entre duas datas em dias, semanas, meses e anos, incluindo dias úteis aproximados.",
+    category: "datas", tags: ["datas", "prazo", "dias"], icon: "CalendarRange", popularity: 86,
+    related: ["somar-dias-a-data", "dias-uteis", "calculadora-de-idade"],
+  }),
+  def({
+    slug: "somar-dias-a-data", name: "Somar ou Subtrair Dias", short: "Que dia será daqui a N dias?",
+    description: "Some ou subtraia dias, semanas ou meses de uma data e descubra a data resultante e o dia da semana.",
+    category: "datas", tags: ["datas", "prazo"], icon: "CalendarPlus", popularity: 72,
+    related: ["diferenca-entre-datas", "dias-uteis"],
+  }),
+  def({
+    slug: "dia-da-semana", name: "Dia da Semana de uma Data", short: "Descubra em que dia da semana caiu uma data.",
+    description: "Descubra o dia da semana de qualquer data, passada ou futura, e o número da semana no ano.",
+    category: "datas", tags: ["datas", "calendário"], icon: "Calendar", popularity: 58,
+    related: ["calculadora-de-idade", "somar-dias-a-data"],
+  }),
+  def({
+    slug: "contagem-regressiva", name: "Contagem Regressiva", short: "Quanto falta para uma data importante.",
+    description: "Contagem regressiva ao vivo para qualquer evento: dias, horas, minutos e segundos.",
+    category: "datas", tags: ["evento", "datas"], icon: "Hourglass", popularity: 67,
+    related: ["diferenca-entre-datas", "calculadora-de-idade"],
+  }),
+  def({
+    slug: "dias-uteis", name: "Calculadora de Dias Úteis", short: "Dias úteis entre datas (sem fins de semana).",
+    description: "Conte dias úteis entre duas datas desconsiderando sábados e domingos, com opção de descontar feriados informados.",
+    category: "datas", tags: ["trabalho", "prazo", "datas"], icon: "BriefcaseBusiness", popularity: 71,
+    faq: [{ q: "Feriados são considerados?", a: "Você pode informar a quantidade de feriados em dias úteis no período e eles serão descontados." }],
+    related: ["diferenca-entre-datas", "somar-dias-a-data"],
+  }),
+
+  /* ---------------- CONVERSORES ---------------- */
+  def({
+    slug: "conversor-de-temperatura", name: "Conversor de Temperatura", short: "Celsius, Fahrenheit e Kelvin.",
+    description: "Converta temperaturas entre Celsius, Fahrenheit e Kelvin instantaneamente.",
+    category: "conversores", tags: ["temperatura", "unidades"], icon: "Thermometer", popularity: 80,
+    examples: ["100 °C = 212 °F = 373,15 K"], related: ["conversor-de-comprimento", "conversor-de-peso"],
+  }),
+  def({
+    slug: "conversor-de-comprimento", name: "Conversor de Comprimento", short: "Metros, km, milhas, pés, polegadas.",
+    description: "Converta unidades de comprimento e distância: mm, cm, m, km, polegadas, pés, jardas e milhas.",
+    category: "conversores", tags: ["comprimento", "unidades"], icon: "Ruler", popularity: 76,
+    related: ["conversor-de-area", "conversor-de-velocidade"],
+  }),
+  def({
+    slug: "conversor-de-peso", name: "Conversor de Peso e Massa", short: "kg, g, libras, onças e toneladas.",
+    description: "Converta unidades de massa entre gramas, quilogramas, toneladas, libras e onças.",
+    category: "conversores", tags: ["peso", "unidades"], icon: "Weight", popularity: 70,
+    related: ["conversor-de-volume", "conversor-de-comprimento"],
+  }),
+  def({
+    slug: "conversor-de-velocidade", name: "Conversor de Velocidade", short: "km/h, m/s, mph e nós.",
+    description: "Converta velocidades entre km/h, m/s, mph, nós e pés por segundo.",
+    category: "conversores", tags: ["velocidade", "unidades"], icon: "Gauge", popularity: 55,
+    related: ["conversor-de-comprimento"],
+  }),
+  def({
+    slug: "conversor-de-area", name: "Conversor de Área", short: "m², km², hectares, acres e pés².",
+    description: "Converta áreas entre metros quadrados, hectares, acres, alqueires e mais.",
+    category: "conversores", tags: ["área", "unidades", "imóveis"], icon: "Square", popularity: 52,
+    related: ["conversor-de-comprimento"],
+  }),
+  def({
+    slug: "conversor-de-volume", name: "Conversor de Volume", short: "Litros, ml, galões, xícaras.",
+    description: "Converta volumes entre litros, mililitros, m³, galões, xícaras e colheres.",
+    category: "conversores", tags: ["volume", "cozinha", "unidades"], icon: "Beaker", popularity: 58,
+    related: ["conversor-de-peso"],
+  }),
+  def({
+    slug: "conversor-de-dados", name: "Conversor de Dados (Bytes)", short: "KB, MB, GB, TB e bits.",
+    description: "Converta unidades de armazenamento digital entre bits, bytes, KB, MB, GB, TB e suas versões binárias.",
+    category: "conversores", tags: ["dados", "tecnologia"], icon: "HardDrive", popularity: 66,
+    faq: [{ q: "1 GB são 1000 ou 1024 MB?", a: "No SI (fabricantes), 1 GB = 1000 MB. No binário (GiB), 1 GiB = 1024 MiB. A ferramenta mostra ambos." }],
+    related: ["conversor-de-base", "tempo-de-download"],
+  }),
+  def({
+    slug: "tempo-de-download", name: "Tempo de Download", short: "Quanto tempo leva para baixar um arquivo.",
+    description: "Estime o tempo de download ou upload a partir do tamanho do arquivo e da velocidade da conexão.",
+    category: "conversores", tags: ["internet", "dados"], icon: "Download", popularity: 54,
+    related: ["conversor-de-dados"],
+  }),
+  def({
+    slug: "conversor-de-base", name: "Conversor de Base Numérica", short: "Binário, octal, decimal e hexadecimal.",
+    description: "Converta números entre binário, octal, decimal e hexadecimal com visualização simultânea.",
+    category: "conversores", tags: ["programação", "binário", "hex"], icon: "Binary", popularity: 60,
+    related: ["texto-para-binario", "conversor-de-dados"],
+  }),
+  def({
+    slug: "numeros-romanos", name: "Números Romanos", short: "Arábico ↔ romano.",
+    description: "Converta números arábicos em romanos e vice-versa (1 a 3999).",
+    category: "conversores", tags: ["matemática", "história"], icon: "Landmark", popularity: 50,
+    related: ["conversor-de-base"],
+  }),
+  def({
+    slug: "conversor-de-cores", name: "Conversor de Cores", short: "HEX, RGB e HSL com prévia.",
+    description: "Converta cores entre HEX, RGB e HSL, veja a prévia e copie no formato que precisar.",
+    category: "conversores", tags: ["design", "css", "cores"], icon: "Palette", popularity: 74,
+    related: ["gerador-de-paleta", "px-para-rem"],
+  }),
+  def({
+    slug: "px-para-rem", name: "Conversor PX ↔ REM", short: "Unidades CSS com base configurável.",
+    description: "Converta pixels para rem/em e vice-versa, com base de fonte configurável (padrão 16px).",
+    category: "conversores", tags: ["css", "front-end"], icon: "Code2", popularity: 62,
+    related: ["conversor-de-cores"],
+  }),
+  def({
+    slug: "timestamp-unix", name: "Conversor de Timestamp Unix", short: "Epoch ↔ data legível.",
+    description: "Converta timestamps Unix (segundos ou milissegundos) em datas legíveis e vice-versa, com fuso local e UTC.",
+    category: "conversores", tags: ["programação", "datas"], icon: "Clock4", popularity: 63,
+    related: ["diferenca-entre-datas", "conversor-de-base"],
+  }),
+  def({
+    slug: "codificador-base64", name: "Base64 Encode / Decode", short: "Codifique e decodifique Base64 (UTF-8).",
+    description: "Codifique texto em Base64 ou decodifique de volta, com suporte completo a UTF-8 e acentos.",
+    category: "conversores", tags: ["programação", "codificação"], icon: "FileCode", popularity: 68,
+    related: ["url-encode", "gerador-de-hash"],
+  }),
+  def({
+    slug: "url-encode", name: "URL Encode / Decode", short: "Escape de caracteres para URLs.",
+    description: "Codifique e decodifique componentes de URL (percent-encoding) de forma segura.",
+    category: "conversores", tags: ["programação", "web"], icon: "Link", popularity: 56,
+    related: ["codificador-base64", "gerador-de-slug"],
+  }),
+  def({
+    slug: "formatador-json", name: "Formatador e Validador JSON", short: "Indente, minifique e valide JSON.",
+    description: "Formate JSON com indentação, minifique e detecte erros de sintaxe com a posição do problema.",
+    category: "conversores", tags: ["programação", "json", "dev"], icon: "Braces", popularity: 77,
+    related: ["codificador-base64", "texto-para-binario"],
+  }),
+  def({
+    slug: "texto-para-binario", name: "Texto ↔ Binário", short: "Converta texto em binário e volte.",
+    description: "Converta qualquer texto em código binário (UTF-8) e decodifique binário de volta em texto.",
+    category: "conversores", tags: ["binário", "programação"], icon: "Binary", popularity: 48,
+    related: ["conversor-de-base", "codificador-base64"],
+  }),
+
+  /* ---------------- TEXTO ---------------- */
+  def({
+    slug: "contador-de-palavras", name: "Contador de Palavras", short: "Palavras, caracteres, frases e tempo de leitura.",
+    description: "Conte palavras, caracteres (com e sem espaços), frases, parágrafos, tempo de leitura e de fala em tempo real.",
+    category: "texto", tags: ["texto", "redação", "seo"], icon: "FileText", popularity: 95,
+    related: ["contador-de-caracteres", "frequencia-de-palavras", "tempo-de-leitura"],
+  }),
+  def({
+    slug: "contador-de-caracteres", name: "Contador de Caracteres", short: "Limites de Twitter/X, Instagram, meta tags.",
+    description: "Conte caracteres e compare com os limites de redes sociais e de SEO (title, description, X, Instagram, LinkedIn).",
+    category: "texto", tags: ["texto", "redes sociais", "seo"], icon: "Hash", popularity: 84,
+    related: ["contador-de-palavras", "gerador-de-hashtags"],
+  }),
+  def({
+    slug: "maiusculas-e-minusculas", name: "Maiúsculas e Minúsculas", short: "UPPER, lower, Title Case, Sentence case.",
+    description: "Converta textos para maiúsculas, minúsculas, Title Case, Sentence case, camelCase, snake_case e kebab-case.",
+    category: "texto", tags: ["texto", "formatação"], icon: "CaseSensitive", popularity: 79,
+    related: ["remover-acentos", "gerador-de-slug"],
+  }),
+  def({
+    slug: "remover-acentos", name: "Remover Acentos", short: "Limpe acentos e caracteres especiais.",
+    description: "Remova acentos, cedilhas e caracteres especiais de textos, útil para nomes de arquivos e sistemas legados.",
+    category: "texto", tags: ["texto", "limpeza"], icon: "Eraser", popularity: 66,
+    related: ["gerador-de-slug", "limpar-espacos"],
+  }),
+  def({
+    slug: "limpar-espacos", name: "Limpar Espaços e Quebras", short: "Remova espaços duplicados e linhas vazias.",
+    description: "Normalize textos removendo espaços duplicados, tabs, quebras de linha extras e espaços no início/fim.",
+    category: "texto", tags: ["texto", "limpeza"], icon: "Eraser", popularity: 57,
+    related: ["remover-linhas-duplicadas", "remover-acentos"],
+  }),
+  def({
+    slug: "inverter-texto", name: "Inverter Texto", short: "Inverta caracteres, palavras ou linhas.",
+    description: "Inverta a ordem dos caracteres, das palavras ou das linhas de um texto.",
+    category: "texto", tags: ["texto", "diversão"], icon: "FlipHorizontal", popularity: 40,
+    related: ["ordenar-linhas"],
+  }),
+  def({
+    slug: "remover-linhas-duplicadas", name: "Remover Linhas Duplicadas", short: "Deixe apenas linhas únicas.",
+    description: "Remova linhas repetidas de listas, mantendo a ordem original ou ordenando o resultado.",
+    category: "texto", tags: ["texto", "listas", "dados"], icon: "ListX", popularity: 61,
+    related: ["ordenar-linhas", "limpar-espacos"],
+  }),
+  def({
+    slug: "ordenar-linhas", name: "Ordenar Linhas", short: "A–Z, Z–A, numérico ou por tamanho.",
+    description: "Ordene linhas alfabeticamente, em ordem inversa, numérica ou por comprimento.",
+    category: "texto", tags: ["texto", "listas"], icon: "ArrowDownAZ", popularity: 55,
+    related: ["remover-linhas-duplicadas", "inverter-texto"],
+  }),
+  def({
+    slug: "gerador-de-slug", name: "Gerador de Slug", short: "URLs amigáveis a partir de títulos.",
+    description: "Transforme títulos em slugs amigáveis para URLs: sem acentos, minúsculas e separados por hífen.",
+    category: "texto", tags: ["seo", "url", "web"], icon: "Link2", popularity: 73,
+    related: ["remover-acentos", "url-encode"],
+  }),
+  def({
+    slug: "frequencia-de-palavras", name: "Frequência de Palavras", short: "Palavras mais usadas e densidade.",
+    description: "Analise a frequência e densidade de palavras de um texto — útil para SEO e revisão de repetição.",
+    category: "texto", tags: ["seo", "análise", "texto"], icon: "BarChart3", popularity: 59,
+    related: ["contador-de-palavras", "legibilidade"],
+  }),
+  def({
+    slug: "extrair-emails-e-links", name: "Extrair E-mails e Links", short: "Extraia e-mails, URLs e telefones de um texto.",
+    description: "Extraia automaticamente endereços de e-mail, URLs e números de telefone de qualquer texto colado.",
+    category: "texto", tags: ["dados", "texto", "produtividade"], icon: "AtSign", popularity: 52,
+    related: ["remover-linhas-duplicadas"],
+  }),
+  def({
+    slug: "lorem-ipsum", name: "Gerador de Lorem Ipsum", short: "Parágrafos, frases ou palavras.",
+    description: "Gere texto de preenchimento Lorem Ipsum por parágrafos, frases ou palavras para layouts e protótipos.",
+    category: "texto", tags: ["design", "texto", "protótipo"], icon: "AlignLeft", popularity: 64,
+    related: ["contador-de-palavras"],
+  }),
+  def({
+    slug: "comparar-textos", name: "Comparar Textos (Diff)", short: "Veja diferenças linha a linha.",
+    description: "Compare dois textos e destaque linhas adicionadas, removidas e iguais.",
+    category: "texto", tags: ["texto", "dev", "revisão"], icon: "GitCompare", popularity: 56,
+    related: ["remover-linhas-duplicadas", "formatador-json"],
+  }),
+
+  /* ---------------- GERADORES ---------------- */
+  def({
+    slug: "gerador-de-senha", name: "Gerador de Senha", short: "Senhas fortes e frases-senha com medidor.",
+    description: "Gere senhas seguras com controle de tamanho, símbolos, números e caracteres ambíguos, ou frases-senha memoráveis. Inclui medidor de força e entropia.",
+    category: "geradores", tags: ["segurança", "senha"], icon: "KeyRound", popularity: 97,
+    faq: [{ q: "A senha gerada é segura?", a: "Sim. Usa a API criptográfica do navegador (crypto.getRandomValues) e nunca sai do seu dispositivo." }, { q: "Qual tamanho ideal?", a: "Pelo menos 16 caracteres com letras, números e símbolos, ou uma frase-senha com 5+ palavras." }],
+    related: ["gerador-de-hash", "gerador-de-uuid"],
+  }),
+  def({
+    slug: "gerador-de-qr-code", name: "Gerador de QR Code", short: "Links, texto, Wi-Fi e contatos. Baixe em PNG.",
+    description: "Crie QR Codes para links, textos, redes Wi-Fi, e-mails e telefones com tamanho e correção de erro configuráveis. Baixe em PNG.",
+    category: "geradores", tags: ["qr code", "marketing", "utilidade"], icon: "QrCode", popularity: 94,
+    related: ["gerador-de-slug", "url-encode"],
+  }),
+  def({
+    slug: "gerador-de-uuid", name: "Gerador de UUID", short: "UUID v4 em lote.",
+    description: "Gere identificadores únicos universais (UUID v4) individualmente ou em lote, com opções de formatação.",
+    category: "geradores", tags: ["dev", "programação"], icon: "Fingerprint", popularity: 58,
+    related: ["gerador-de-hash", "gerador-de-senha"],
+  }),
+  def({
+    slug: "gerador-de-hash", name: "Gerador de Hash", short: "SHA-1, SHA-256, SHA-384 e SHA-512.",
+    description: "Calcule hashes SHA-1, SHA-256, SHA-384 e SHA-512 de qualquer texto usando a Web Crypto API.",
+    category: "geradores", tags: ["segurança", "dev", "hash"], icon: "ShieldCheck", popularity: 60,
+    faq: [{ q: "Por que não tem MD5?", a: "MD5 é considerado inseguro e não é suportado nativamente pela Web Crypto API. Prefira SHA-256." }],
+    related: ["codificador-base64", "gerador-de-senha"],
+  }),
+  def({
+    slug: "gerador-de-paleta", name: "Gerador de Paleta de Cores", short: "Paletas harmônicas a partir de uma cor.",
+    description: "Gere paletas complementares, análogas, triádicas e monocromáticas a partir de uma cor base, com códigos prontos para CSS.",
+    category: "geradores", tags: ["design", "cores", "css"], icon: "SwatchBook", popularity: 71,
+    related: ["conversor-de-cores"],
+  }),
+  def({
+    slug: "sorteador", name: "Sorteador de Nomes e Números", short: "Sorteie nomes de uma lista ou números.",
+    description: "Sorteie um ou mais nomes de uma lista, ou números em um intervalo, sem repetição.",
+    category: "geradores", tags: ["sorteio", "diversão"], icon: "Dices", popularity: 75,
+    related: ["gerador-de-numero-aleatorio"],
+  }),
+  def({
+    slug: "gerador-de-numero-aleatorio", name: "Número Aleatório", short: "Números aleatórios em um intervalo.",
+    description: "Gere números aleatórios em um intervalo, com opção de vários números únicos de uma vez.",
+    category: "geradores", tags: ["sorteio", "matemática"], icon: "Shuffle", popularity: 57,
+    related: ["sorteador"],
+  }),
+  def({
+    slug: "gerador-de-nome-de-usuario", name: "Gerador de Nome de Usuário", short: "Ideias de @ para redes e jogos.",
+    description: "Gere sugestões de nomes de usuário criativas a partir de uma palavra-chave ou tema.",
+    category: "geradores", tags: ["redes sociais", "criatividade"], icon: "AtSign", popularity: 53,
+    related: ["gerador-de-bio", "gerador-de-hashtags"],
+  }),
+
+  /* ---------------- IA ---------------- */
+  def({
+    slug: "prompt-builder", name: "Prompt Builder", short: "Monte prompts profissionais em segundos.",
+    description: "Construa prompts estruturados combinando objetivo, contexto, público, tom, formato, plataforma, nível de detalhe e resultado esperado — sem API externa.",
+    category: "ia", tags: ["prompt", "chatgpt", "ia"], icon: "Wand2", popularity: 99,
+    related: ["estimador-de-tokens", "gerador-de-titulos", "reescritor-de-tom"],
+  }),
+  def({
+    slug: "estimador-de-tokens", name: "Estimador de Tokens", short: "Estime tokens e custo de prompts.",
+    description: "Estime a quantidade de tokens de um texto e o custo aproximado em modelos de linguagem populares.",
+    category: "ia", tags: ["tokens", "llm", "custo"], icon: "Coins", popularity: 70,
+    faq: [{ q: "A contagem é exata?", a: "É uma estimativa baseada em heurística (≈ 4 caracteres/token para inglês, ≈ 3,3 para português). Tokenizadores reais variam por modelo." }],
+    related: ["prompt-builder", "contador-de-palavras"],
+  }),
+  def({
+    slug: "resumidor-de-texto", name: "Resumidor de Texto", short: "Resumo extrativo local, sem IA externa.",
+    description: "Gere um resumo extrativo de textos longos selecionando as frases mais relevantes por frequência de termos — processado localmente.",
+    category: "ia", tags: ["resumo", "estudos", "texto"], icon: "ScrollText", popularity: 76,
+    related: ["legibilidade", "frequencia-de-palavras"],
+  }),
+  def({
+    slug: "gerador-de-titulos", name: "Gerador de Títulos", short: "Headlines para blog, YouTube e anúncios.",
+    description: "Gere dezenas de variações de títulos a partir de um tema usando fórmulas comprovadas de copywriting.",
+    category: "ia", tags: ["copywriting", "blog", "youtube"], icon: "Heading", popularity: 78,
+    related: ["gerador-de-hashtags", "gerador-de-bio", "prompt-builder"],
+  }),
+  def({
+    slug: "gerador-de-hashtags", name: "Gerador de Hashtags", short: "Hashtags a partir de palavras-chave.",
+    description: "Crie conjuntos de hashtags para Instagram, TikTok e LinkedIn a partir de palavras-chave e nicho.",
+    category: "ia", tags: ["instagram", "redes sociais", "marketing"], icon: "Hash", popularity: 72,
+    related: ["gerador-de-titulos", "contador-de-caracteres"],
+  }),
+  def({
+    slug: "gerador-de-bio", name: "Gerador de Bio", short: "Bios para Instagram, LinkedIn e X.",
+    description: "Gere bios curtas e profissionais para redes sociais a partir do que você faz, para quem e seu diferencial.",
+    category: "ia", tags: ["redes sociais", "perfil"], icon: "UserRound", popularity: 63,
+    related: ["gerador-de-nome-de-usuario", "gerador-de-titulos"],
+  }),
+  def({
+    slug: "legibilidade", name: "Analisador de Legibilidade", short: "Índice Flesch adaptado ao português.",
+    description: "Avalie a legibilidade de um texto com o índice de Flesch adaptado ao português, tamanho médio de frases e palavras complexas.",
+    category: "ia", tags: ["redação", "seo", "texto"], icon: "BookOpenCheck", popularity: 58,
+    related: ["resumidor-de-texto", "contador-de-palavras"],
+  }),
+  def({
+    slug: "reescritor-de-tom", name: "Ajustador de Tom", short: "Deixe o texto mais formal, direto ou amigável.",
+    description: "Aplique regras locais para tornar textos mais formais, informais, diretos ou entusiasmados, com sugestões de substituição.",
+    category: "ia", tags: ["redação", "e-mail"], icon: "MessageSquareText", popularity: 55,
+    related: ["prompt-builder", "legibilidade"],
+  }),
+  def({
+    slug: "perguntas-de-entrevista", name: "Gerador de Perguntas de Entrevista", short: "Perguntas por cargo e nível.",
+    description: "Gere listas de perguntas de entrevista técnicas e comportamentais por cargo, nível e competências.",
+    category: "ia", tags: ["carreira", "rh"], icon: "MessagesSquare", popularity: 51,
+    related: ["prompt-builder"],
+  }),
+
+  /* ---------------- PRODUTIVIDADE ---------------- */
+  def({
+    slug: "pomodoro", name: "Timer Pomodoro", short: "Foco 25/5 com ciclos e notificação sonora.",
+    description: "Timer Pomodoro configurável com ciclos de foco e pausas, contador de sessões e aviso sonoro.",
+    category: "produtividade", tags: ["foco", "estudos", "trabalho"], icon: "Timer", popularity: 82,
+    howTo: ["Escolha a duração do foco e das pausas.", "Clique em Iniciar e mantenha a aba aberta.", "Ao fim de cada ciclo, o timer avisa e avança automaticamente."],
+    related: ["cronometro", "lista-de-tarefas"],
+  }),
+  def({
+    slug: "cronometro", name: "Cronômetro com Voltas", short: "Cronômetro preciso com marcação de voltas.",
+    description: "Cronômetro com precisão de centésimos, marcação de voltas e exportação dos tempos.",
+    category: "produtividade", tags: ["tempo", "esporte"], icon: "Watch", popularity: 60,
+    related: ["pomodoro", "calculadora-de-horas"],
+  }),
+  def({
+    slug: "lista-de-tarefas", name: "Lista de Tarefas", short: "To-do local, com prioridades e progresso.",
+    description: "Lista de tarefas salva no navegador com prioridades, filtro, progresso e exportação em texto.",
+    category: "produtividade", tags: ["tarefas", "organização"], icon: "ListChecks", popularity: 74,
+    related: ["notas-rapidas", "pomodoro"],
+  }),
+  def({
+    slug: "notas-rapidas", name: "Notas Rápidas", short: "Bloco de notas que salva automaticamente.",
+    description: "Bloco de notas minimalista com salvamento automático no navegador, contador de palavras e download em .txt.",
+    category: "produtividade", tags: ["notas", "escrita"], icon: "StickyNote", popularity: 65,
+    related: ["lista-de-tarefas", "contador-de-palavras"],
+  }),
+  def({
+    slug: "tempo-de-leitura", name: "Calculadora de Tempo de Leitura", short: "Minutos para ler ou narrar um texto.",
+    description: "Calcule quanto tempo leva para ler ou narrar um texto com velocidade ajustável (palavras por minuto).",
+    category: "produtividade", tags: ["leitura", "conteúdo", "vídeo"], icon: "BookOpen", popularity: 57,
+    related: ["contador-de-palavras", "resumidor-de-texto"],
+  }),
+  def({
+    slug: "roda-de-decisao", name: "Roda de Decisão", short: "Não consegue decidir? Deixe a roda escolher.",
+    description: "Adicione opções e gire a roda para tomar decisões rápidas — do almoço à próxima tarefa.",
+    category: "produtividade", tags: ["decisão", "diversão"], icon: "Disc3", popularity: 59,
+    related: ["sorteador"],
+  }),
+];
+
+export const toolBySlug = (slug: string) => tools.find((t) => t.slug === slug);
+export const toolsByCategory = (cat: ToolCategory) => tools.filter((t) => t.category === cat);
+export const categoryBySlug = (slug: string) => toolCategories.find((c) => c.slug === slug);

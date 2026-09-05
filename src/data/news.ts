@@ -1,120 +1,157 @@
-import type { ContentBlock, NewsItem } from "@/lib/types";
+import type { Article, Block } from "@/lib/types";
 
-const p = (text: string): ContentBlock => ({ type: "p", text });
-const h2 = (text: string): ContentBlock => ({ type: "h2", text });
-const ul = (items: string[]): ContentBlock => ({ type: "ul", items });
-const callout = (text: string): ContentBlock => ({ type: "callout", text });
-const quote = (text: string): ContentBlock => ({ type: "quote", text });
+const P = (text: string): Block => ({ type: "p", text });
+const H = (text: string): Block => ({ type: "h2", text });
+const UL = (items: string[]): Block => ({ type: "ul", items });
+const Q = (text: string): Block => ({ type: "quote", text });
+const C = (text: string, tone: "info" | "tip" | "warn" = "info"): Block => ({ type: "callout", tone, text });
+const AD: Block = { type: "ad" };
 
-function n(slug: string, title: string, excerpt: string, category: string, tags: string[], publishedAt: string, body: ContentBlock[], featured = false): NewsItem {
-  return { kind: "news", slug, title, excerpt, category, tags, author: "Redação Nexo", publishedAt, readingTime: Math.max(2, Math.round(body.reduce((a, b) => a + (b.text?.length ?? 0) + (b.items?.join(" ").length ?? 0), 0) / 1100)), body, featured, source: { name: "Análise editorial Nexo" } };
-}
+const n = (a: Omit<Article, "kind">): Article => ({ kind: "news", ...a });
 
-export const NEWS: NewsItem[] = [
-  n("agentes-de-ia-passam-a-executar-tarefas-de-ponta-a-ponta", "Agentes de IA deixam o laboratório e passam a executar tarefas de ponta a ponta", "A nova geração de assistentes não só responde: navega, preenche formulários, escreve código e revisa o próprio trabalho. Entenda o que muda para quem usa e para quem constrói.", "inteligencia-artificial", ["agentes", "LLM", "automação"], "2026-03-18", [
-    p("Durante dois anos, a conversa sobre IA generativa girou em torno de chat. Em 2026 o centro de gravidade se moveu: os grandes provedores lançaram agentes capazes de operar navegadores, planilhas e terminais de forma autônoma, com supervisão humana em pontos de decisão."),
-    h2("O que é diferente agora"),
-    ul(["Planejamento em múltiplos passos com verificação intermediária dos resultados.", "Uso de ferramentas (APIs, navegador, sistema de arquivos) via protocolos padronizados.", "Memória de sessão mais longa, com contexto de centenas de milhares de tokens.", "Mecanismos de 'pedir permissão' antes de ações irreversíveis, como pagamentos e envios."]),
-    p("Na prática, tarefas que exigiam dez janelas abertas — comparar fornecedores, preencher um cadastro, consolidar um relatório — passam a ser descritas em linguagem natural e delegadas."),
-    h2("Impacto para pequenas empresas"),
-    p("O ganho mais imediato está em operações repetitivas de back-office. Mas há um custo escondido: agentes erram com confiança. Empresas que adotaram cedo relatam que a etapa de revisão humana continua sendo indispensável e que os melhores resultados vêm quando o escopo da tarefa é estreito e bem definido."),
-    callout("Dica prática: antes de delegar uma tarefa a um agente, escreva o critério de sucesso em uma frase. Se você não consegue, o agente também não vai conseguir."),
-    h2("O que observar nos próximos meses"),
-    ul(["Padrões abertos de comunicação entre agentes e ferramentas.", "Auditoria e registro de ações para conformidade.", "Precificação por tarefa concluída, e não por token."]),
-  ], true),
-  n("modelos-abertos-alcancam-paridade-em-tarefas-de-codigo", "Modelos de pesos abertos alcançam paridade com os proprietários em tarefas de código", "Benchmarks independentes mostram que modelos abertos rodando em hardware acessível já resolvem a maior parte dos problemas práticos de programação.", "programacao", ["open source", "LLM", "desenvolvimento"], "2026-03-15", [
-    p("A distância entre modelos abertos e fechados em programação encolheu a ponto de, em muitos cenários corporativos, deixar de ser um fator de decisão. O que pesa agora é custo, privacidade e integração."),
-    h2("Por que isso importa"),
-    p("Equipes que não podem enviar código para servidores de terceiros — bancos, saúde, governo — passam a ter alternativas reais para assistentes de programação locais. Um servidor com uma única GPU de consumo já atende um time pequeno."),
-    ul(["Autocompletar e refatoração com latência baixa.", "Revisão de pull requests com contexto do repositório inteiro.", "Geração de testes a partir de especificações."]),
-    quote("A pergunta deixou de ser 'qual modelo é o melhor' e passou a ser 'qual modelo é bom o bastante para este fluxo, ao menor custo'."),
-    h2("Ressalvas"),
-    p("Os modelos abertos ainda ficam atrás em raciocínio longo e em tarefas com muitos arquivos interdependentes. Para arquitetura e decisões de design, os proprietários seguem à frente."),
-  ], true),
-  n("regulacao-de-ia-no-brasil-avanca-com-regras-para-sistemas-de-alto-risco", "Regulação de IA no Brasil avança com regras para sistemas de alto risco", "Texto em tramitação define obrigações de transparência, avaliação de impacto e direito à explicação. Saiba o que muda para empresas e usuários.", "tecnologia", ["regulação", "governo", "privacidade"], "2026-03-12", [
-    p("O marco regulatório brasileiro para inteligência artificial ganhou contornos mais claros. A abordagem segue o modelo baseado em risco: quanto maior o potencial de dano de um sistema, maiores as obrigações."),
-    h2("Categorias de risco"),
-    ul(["Risco excessivo: práticas proibidas, como manipulação subliminar e pontuação social.", "Alto risco: saúde, crédito, segurança pública, educação e emprego.", "Risco limitado: dever de informar que o usuário interage com IA.", "Risco mínimo: sem obrigações específicas."]),
-    h2("O que empresas precisam preparar"),
-    p("Avaliação de impacto algorítmico, documentação técnica, registro de decisões automatizadas e canal para contestação. Para quem já se adequou à LGPD, boa parte da estrutura de governança pode ser reaproveitada."),
-    callout("Empresas pequenas que apenas usam ferramentas de IA de terceiros têm obrigações menores, mas ainda respondem pela transparência com seus clientes."),
-  ]),
-  n("chips-dedicados-a-ia-chegam-a-notebooks-de-entrada", "Chips dedicados a IA chegam a notebooks de entrada e mudam o que roda offline", "NPUs com dezenas de TOPS deixam de ser exclusividade de máquinas premium. Transcrição, tradução e geração de imagem local passam a ser padrão.", "hardware", ["NPU", "notebooks", "computação local"], "2026-03-10", [
-    p("A promessa de 'PC com IA' finalmente chegou às faixas de preço mais populares. Os novos processadores integram unidades de processamento neural capazes de rodar modelos de linguagem pequenos e modelos de imagem sem depender da nuvem."),
-    h2("O que funciona bem localmente"),
-    ul(["Transcrição de reuniões em tempo real.", "Tradução de documentos.", "Remoção de fundo e melhoria de fotos.", "Assistentes de escrita com modelos de 3 a 8 bilhões de parâmetros."]),
-    p("O ganho não é só privacidade: aplicações locais respondem instantaneamente e funcionam sem internet. A troca é qualidade — os modelos locais ainda são notavelmente mais fracos em raciocínio complexo."),
-    h2("Para quem compra"),
-    p("Se seu uso é escrita, planilha e navegador, a NPU faz pouca diferença hoje. Se você edita vídeo, transcreve muito ou quer experimentar modelos locais, vale priorizar."),
-  ]),
-  n("google-atualiza-diretrizes-para-conteudo-gerado-por-ia", "Buscador atualiza diretrizes: conteúdo gerado por IA sem valor agregado perde alcance", "Nova rodada de atualizações de qualidade mira páginas produzidas em escala. O critério não é a ferramenta, e sim a utilidade para quem lê.", "marketing", ["SEO", "conteúdo", "algoritmo"], "2026-03-08", [
-    p("A atualização reforça uma direção que já vinha sendo sinalizada: páginas criadas para ranquear, sem experiência própria ou informação nova, perdem visibilidade — independentemente de terem sido escritas por humanos ou por modelos."),
-    h2("Sinais que ganharam peso"),
-    ul(["Experiência em primeira mão demonstrada no texto.", "Dados originais, exemplos concretos e casos reais.", "Autoria identificável e consistente.", "Atualização real do conteúdo, não apenas da data."]),
-    h2("O que fazer com um site que usa IA"),
-    p("Usar IA para rascunhar, estruturar e revisar segue seguro. O problema é publicar sem edição e sem acrescentar nada. A recomendação prática: para cada artigo, pergunte o que um leitor encontra aqui que não encontraria em outro lugar."),
-    callout("Ferramentas úteis: o analisador de legibilidade e o contador de palavras do Nexo ajudam a revisar textos antes da publicação."),
-  ]),
-  n("vazamento-de-credenciais-reforca-alerta-para-autenticacao-sem-senha", "Vazamento massivo de credenciais reforça alerta para autenticação sem senha", "Bilhões de combinações de e-mail e senha circulam em fóruns. Especialistas repetem: senhas únicas, gerenciador e passkeys.", "seguranca", ["senhas", "passkeys", "vazamento"], "2026-03-05", [
-    p("Uma compilação de vazamentos antigos e recentes voltou a circular, com bilhões de registros. A maior parte não é nova, mas a consolidação facilita ataques de credential stuffing — testar a mesma senha em vários serviços."),
-    h2("O que fazer agora"),
-    ul(["Verifique se o seu e-mail aparece em bases de vazamentos conhecidas.", "Troque senhas repetidas por senhas únicas geradas por um gerenciador.", "Ative autenticação em dois fatores, preferindo aplicativo ou chave física a SMS.", "Onde disponível, migre para passkeys."]),
-    p("Passkeys eliminam a senha como segredo compartilhado: a autenticação usa criptografia de chave pública ligada ao dispositivo. Grandes plataformas já suportam, e a adoção acelerou em 2026."),
-    callout("Use o gerador de senha do Nexo para criar senhas longas e únicas — tudo é gerado no seu navegador, nada é enviado."),
-  ]),
-  n("vagas-em-tecnologia-mudam-de-perfil-com-ia", "Vagas em tecnologia mudam de perfil: menos código repetitivo, mais especificação e revisão", "Anúncios de emprego passam a exigir fluência em ferramentas de IA. Cargos de entrada encolhem, mas surgem funções híbridas.", "carreira", ["mercado", "vagas", "IA"], "2026-03-02", [
-    p("Levantamentos de plataformas de recrutamento mostram uma mudança clara nos requisitos: a capacidade de especificar problemas, revisar saídas de IA e integrar sistemas passou a valer mais do que velocidade de digitação de código."),
-    h2("Funções em alta"),
-    ul(["Engenharia de prompts aplicada a produtos.", "Avaliação e testes de sistemas de IA.", "Integração de agentes com sistemas legados.", "Governança de dados e IA."]),
-    h2("O dilema do júnior"),
-    p("Se a IA faz as tarefas de entrada, como formar seniores? Empresas experientes respondem com programas de mentoria onde o iniciante usa IA sob supervisão, aprendendo a julgar o resultado em vez de apenas produzi-lo."),
-    quote("Quem sabe fazer a pergunta certa e verificar a resposta continua insubstituível."),
-  ]),
-  n("tutores-de-ia-em-escolas-publicas-resultados-do-primeiro-ano", "Tutores de IA em escolas públicas: o que os resultados do primeiro ano mostram", "Programas-piloto apontam ganhos em matemática e leitura quando a ferramenta complementa, e não substitui, o professor.", "educacao", ["educação", "tutores", "escolas"], "2026-02-26", [
-    p("Redes de ensino que testaram tutores baseados em modelos de linguagem divulgaram os primeiros resultados. O padrão que se repete: efeito positivo quando o professor define o uso, e nulo ou negativo quando o aluno é deixado sozinho com a ferramenta."),
-    h2("O que funcionou"),
-    ul(["Explicações alternativas sob demanda para quem não entendeu a aula.", "Prática de exercícios com feedback imediato.", "Apoio à produção de texto com correções comentadas."]),
-    h2("Riscos observados"),
-    p("Dependência para tarefas simples e respostas confiantes, porém erradas, em conteúdos específicos do currículo brasileiro. Escolas com melhores resultados treinaram professores antes de liberar a ferramenta."),
-  ]),
-  n("pagamentos-instantaneos-ganham-recorrencia-e-parcelamento", "Pagamentos instantâneos ganham recorrência e parcelamento nativo", "Novas funcionalidades do sistema de pagamentos instantâneos brasileiro miram assinaturas e crédito. Entenda o impacto para negócios e consumidores.", "negocios", ["pagamentos", "fintech", "pix"], "2026-02-22", [
-    p("O sistema de pagamentos instantâneos brasileiro completou uma nova fase com pagamentos recorrentes automáticos e parcelamento oferecido diretamente pela instituição do pagador."),
-    h2("Para negócios"),
-    ul(["Assinaturas sem cartão, com menor taxa de falha de cobrança.", "Parcelamento sem antecipação de recebíveis: o lojista recebe à vista.", "Conciliação simplificada por identificador único."]),
-    h2("Para consumidores"),
-    p("Mais controle sobre autorizações recorrentes e possibilidade de parcelar sem cartão de crédito. O cuidado: parcelamento tem juros, e é fácil perder a noção do total. Use a calculadora de parcelamento para comparar antes de aceitar."),
-  ]),
-  n("frameworks-front-end-convergem-para-renderizacao-hibrida", "Frameworks front-end convergem para renderização híbrida e menos JavaScript", "Server components, streaming e ilhas de interatividade deixam de ser experimentos e viram padrão em novas versões.", "programacao", ["front-end", "React", "performance"], "2026-02-18", [
-    p("Os principais frameworks web lançaram versões que compartilham a mesma tese: renderizar o máximo no servidor ou no build e enviar JavaScript apenas para o que precisa ser interativo."),
-    h2("Padrões que se consolidaram"),
-    ul(["Componentes de servidor com acesso direto a dados.", "Streaming de HTML com suspense granular.", "Hidratação parcial (ilhas) e lazy loading por interação.", "Transições de visualização nativas no navegador."]),
-    p("O resultado prático: sites mais rápidos em conexões ruins e menos código para manter. O custo é uma curva de aprendizado nova sobre onde cada trecho executa."),
-    callout("Para projetos 100% estáticos, como ferramentas que rodam no navegador, uma SPA leve continua sendo uma escolha perfeitamente válida."),
-  ]),
-  n("energia-para-data-centers-vira-gargalo-da-expansao-de-ia", "Energia para data centers vira o principal gargalo da expansão de IA", "Operadores anunciam contratos de longo prazo com fontes renováveis e nucleares. O debate ambiental chega ao centro da estratégia das big techs.", "tecnologia", ["data centers", "energia", "sustentabilidade"], "2026-02-14", [
-    p("A corrida por capacidade de computação encontrou um limite físico: eletricidade. Novos data centers dedicados a IA demandam gigawatts, e a rede elétrica de várias regiões não acompanha."),
-    h2("Respostas do setor"),
-    ul(["Contratos de compra de energia renovável de longo prazo.", "Reativação e construção de usinas nucleares dedicadas.", "Localização de data centers perto de geração barata, incluindo o Brasil."]),
-    h2("Eficiência como vantagem"),
-    p("Modelos menores e mais eficientes deixam de ser apenas uma questão de custo: passam a ser uma questão de viabilidade. Técnicas como destilação e quantização viraram prioridade nos roadmaps."),
-  ]),
-  n("modelos-multimodais-transformam-atendimento-por-video", "Modelos multimodais em tempo real transformam atendimento e suporte técnico", "Assistentes que enxergam a câmera do celular guiam consertos, instalações e diagnósticos. Empresas de telecom e varejo lideram a adoção.", "inteligencia-artificial", ["multimodal", "atendimento", "voz"], "2026-02-10", [
-    p("Aponte a câmera para o roteador, descreva o problema em voz alta e receba instruções passo a passo enquanto o assistente acompanha o que você faz. Cenários assim saíram das demonstrações e entraram em operação."),
-    h2("Onde já funciona"),
-    ul(["Suporte técnico de provedores de internet.", "Montagem de móveis e instalação de eletrodomésticos.", "Triagem de sinistros em seguradoras.", "Acessibilidade: descrição do ambiente para pessoas com deficiência visual."]),
-    p("A latência caiu para menos de um segundo, o suficiente para uma conversa natural. A limitação atual é o custo por minuto, ainda alto para uso massivo."),
-  ]),
-  n("design-systems-adotam-tokens-semanticos-e-temas-automaticos", "Design systems adotam tokens semânticos e temas automáticos como padrão", "Grandes empresas publicam novas versões de seus sistemas de design com foco em acessibilidade, modo escuro e densidade adaptável.", "design", ["design system", "tokens", "acessibilidade"], "2026-02-06", [
-    p("A nova geração de design systems trata cor, espaçamento e tipografia como tokens semânticos — 'superfície', 'texto secundário', 'borda' — em vez de valores fixos. Isso permite temas claro/escuro, alto contraste e densidades diferentes sem reescrever componentes."),
-    h2("Tendências observadas"),
-    ul(["Menos gradientes e efeitos; mais hierarquia por tipografia e espaço.", "Contraste mínimo AA em todos os estados, inclusive desabilitado.", "Movimento com propósito: transições curtas que explicam mudanças de estado.", "Componentes headless com estilos por camada."]),
-    quote("A melhor interface é a que você não percebe. Se o usuário elogia a animação, ela provavelmente é longa demais."),
-  ]),
-  n("ferramentas-no-code-integram-agentes-e-ampliam-automacao", "Plataformas no-code integram agentes de IA e ampliam automação para não programadores", "Fluxos que antes exigiam scripts agora aceitam instruções em linguagem natural. Especialistas alertam para a governança.", "produtividade", ["no-code", "automação", "agentes"], "2026-02-02", [
-    p("Plataformas de automação incorporaram blocos de IA capazes de interpretar e-mails, classificar documentos e decidir o próximo passo de um fluxo. Para pequenos negócios, é a primeira vez que automações sofisticadas ficam acessíveis sem código."),
-    h2("Casos comuns"),
-    ul(["Triagem de e-mails e criação de tarefas.", "Extração de dados de notas fiscais e recibos.", "Respostas iniciais em canais de atendimento.", "Resumos diários de métricas."]),
-    h2("Cuidados"),
-    p("Automação com IA pode falhar silenciosamente. Defina alertas, revise amostras periodicamente e nunca conecte um fluxo diretamente a ações financeiras sem aprovação humana."),
-  ]),
+export const news: Article[] = [
+  n({
+    slug: "agentes-de-ia-passam-a-executar-tarefas-completas", title: "Agentes de IA deixam o chat e passam a executar tarefas completas no navegador",
+    excerpt: "A nova geração de assistentes navega, preenche formulários e conclui fluxos inteiros. Entenda o que muda para empresas e usuários.",
+    category: "Inteligência Artificial", tags: ["agentes", "automação", "llm"], date: "2026-03-09T09:00:00Z", readTime: 5, author: "Redação Nexo", cover: "blue", popularity: 96,
+    body: [
+      P("Durante dois anos, a interação com modelos de linguagem foi essencialmente conversacional: você pergunta, o modelo responde. Esse paradigma está sendo substituído por **agentes** — sistemas que recebem um objetivo, planejam etapas, usam ferramentas e verificam o próprio resultado."),
+      H("O que mudou tecnicamente"),
+      P("Três avanços convergiram: modelos com janelas de contexto maiores e raciocínio em múltiplas etapas, protocolos padronizados para conectar ferramentas (como o MCP) e ambientes de execução isolados que permitem ao agente agir com segurança em navegadores e sistemas de arquivos."),
+      UL(["Planejamento: o agente decompõe a tarefa em subtarefas verificáveis.", "Uso de ferramentas: chamadas a APIs, navegação web, execução de código.", "Autoavaliação: o próprio modelo revisa o resultado antes de finalizar."]),
+      AD,
+      H("Impacto para quem trabalha com tecnologia"),
+      P("Fluxos repetitivos — reconciliação de planilhas, triagem de tickets, pesquisa de mercado — são os primeiros candidatos à automação. O papel humano migra para definir objetivos, revisar exceções e garantir governança."),
+      C("Dica prática: comece com tarefas de baixo risco e alta repetição. Exija logs de cada ação do agente antes de expandir o escopo.", "tip"),
+      Q("A pergunta deixou de ser 'o que a IA sabe' e passou a ser 'o que a IA pode fazer com segurança'."),
+    ],
+  }),
+  n({
+    slug: "modelos-pequenos-rodando-localmente-ganham-espaco", title: "Modelos pequenos rodando localmente ganham espaço em notebooks e celulares",
+    excerpt: "Com 3 a 8 bilhões de parâmetros, os SLMs entregam qualidade suficiente para a maioria das tarefas do dia a dia — sem enviar dados para a nuvem.",
+    category: "Inteligência Artificial", tags: ["slm", "privacidade", "edge"], date: "2026-03-06T12:00:00Z", readTime: 4, author: "Redação Nexo", cover: "teal", popularity: 88,
+    body: [
+      P("A corrida por modelos cada vez maiores encontrou um contraponto: modelos compactos, quantizados, que rodam em uma GPU de notebook ou no chip de um smartphone. Para resumir e-mails, classificar textos ou autocompletar código, a diferença de qualidade em relação aos gigantes é pequena — e a latência e a privacidade são incomparáveis."),
+      H("Por que isso importa"),
+      UL(["Privacidade: os dados não saem do dispositivo.", "Custo: zero por token após o download.", "Disponibilidade: funciona offline, em campo ou em redes instáveis."]),
+      AD,
+      P("Ferramentas como Ollama, LM Studio e o runtime WebGPU dos navegadores tornaram a instalação trivial. Para desenvolvedores, o padrão emergente é **híbrido**: um modelo local para tarefas simples e um modelo em nuvem apenas quando a complexidade exige."),
+      C("Se você tem 16 GB de RAM, já consegue rodar um modelo de 7B quantizado em 4 bits com boa fluidez.", "info"),
+    ],
+  }),
+  n({
+    slug: "regulacao-de-ia-no-brasil-o-que-esperar", title: "Regulação de IA no Brasil: o que empresas e desenvolvedores devem acompanhar",
+    excerpt: "O debate sobre o marco legal da inteligência artificial avança com foco em classificação de risco, transparência e direitos autorais.",
+    category: "Política e Tecnologia", tags: ["regulação", "brasil", "lgpd"], date: "2026-03-04T15:30:00Z", readTime: 6, author: "Redação Nexo", cover: "ink", popularity: 80,
+    body: [
+      P("O modelo em discussão no Congresso segue a lógica europeia de classificação por risco: sistemas de alto risco (saúde, crédito, segurança pública) teriam obrigações reforçadas de documentação, auditoria e supervisão humana."),
+      H("Pontos de atenção para times de produto"),
+      UL(["Transparência: informar ao usuário quando ele interage com IA.", "Explicabilidade: manter registros que permitam auditar decisões automatizadas.", "Dados de treinamento: rastreabilidade e respeito a direitos autorais.", "Interação com a LGPD: base legal para uso de dados pessoais em treinamento."]),
+      AD,
+      P("Independentemente do texto final, a tendência é clara: documentação de modelos, avaliação de vieses e canais de contestação deixarão de ser diferenciais e passarão a ser requisitos."),
+      C("Este texto é informativo e não constitui aconselhamento jurídico. Acompanhe fontes oficiais para o andamento da legislação.", "warn"),
+    ],
+  }),
+  n({
+    slug: "geracao-de-video-por-ia-chega-a-producao-profissional", title: "Geração de vídeo por IA chega à produção profissional — com limites claros",
+    excerpt: "Ferramentas de text-to-video já produzem planos de 5 a 20 segundos com consistência suficiente para publicidade e B-roll.",
+    category: "Criatividade", tags: ["vídeo", "ia generativa", "produção"], date: "2026-03-02T10:00:00Z", readTime: 5, author: "Redação Nexo", cover: "rose", popularity: 84,
+    body: [
+      P("Produtoras já usam modelos generativos para storyboards animados, B-roll de apoio e variações de anúncio. O que ainda não funciona bem: diálogos longos, continuidade de personagens entre cenas e texto legível dentro do vídeo."),
+      H("Fluxo de trabalho que está se consolidando"),
+      UL(["Imagem-chave gerada e aprovada primeiro (image-to-video).", "Planos curtos de 4–8 s, montados em edição tradicional.", "Correção de cor e som feitos por humanos."]),
+      AD,
+      P("Para criadores independentes, o ganho é acesso: cenas que exigiriam locação e equipe agora custam alguns créditos. Para profissionais, é velocidade na pré-produção."),
+    ],
+  }),
+  n({
+    slug: "copilotos-de-codigo-e-produtividade-de-times", title: "Copilotos de código: estudos apontam ganho real, mas exigem revisão disciplinada",
+    excerpt: "Times relatam entrega mais rápida de tarefas rotineiras; a qualidade depende de testes e code review, não do assistente.",
+    category: "Desenvolvimento", tags: ["programação", "copilot", "produtividade"], date: "2026-02-27T09:00:00Z", readTime: 4, author: "Redação Nexo", cover: "violet", popularity: 78,
+    body: [
+      P("Assistentes de código evoluíram do autocompletar para agentes que abrem pull requests. O ganho é consistente em tarefas bem definidas — testes, migrações, boilerplate — e menor em decisões arquiteturais."),
+      H("O que times maduros estão fazendo"),
+      UL(["Exigem testes automatizados para qualquer código gerado.", "Mantêm code review humano obrigatório.", "Documentam padrões do projeto em arquivos que o assistente lê (ex.: AGENTS.md).", "Medem defeitos em produção, não só velocidade."]),
+      AD,
+      C("Use o assistente para escrever o teste antes da implementação. É a forma mais barata de garantir que o código gerado faz o que você pediu.", "tip"),
+    ],
+  }),
+  n({
+    slug: "busca-com-ia-muda-o-seo", title: "Busca com IA muda o jogo do SEO: menos cliques, mais citações",
+    excerpt: "Respostas geradas no topo dos resultados reduzem o tráfego para páginas informacionais. Estratégias de conteúdo precisam se adaptar.",
+    category: "Marketing Digital", tags: ["seo", "busca", "conteúdo"], date: "2026-02-24T14:00:00Z", readTime: 5, author: "Redação Nexo", cover: "amber", popularity: 90,
+    body: [
+      P("Quando o buscador responde diretamente, o usuário não precisa clicar. Sites de conteúdo informacional genérico sentem a queda; sites com dados originais, ferramentas e experiência própria são citados como fonte."),
+      H("O que ainda funciona"),
+      UL(["Conteúdo com experiência real (casos, números próprios, testes).", "Ferramentas interativas que a IA não substitui — calculadoras, conversores, geradores.", "Marcação estruturada (FAQ, HowTo, Article) para facilitar a citação.", "Marca: pessoas buscam pelo nome quando confiam."]),
+      AD,
+      P("O termo em alta é **GEO** (Generative Engine Optimization): otimizar para ser citado pela IA, não apenas ranqueado."),
+    ],
+  }),
+  n({
+    slug: "chips-de-ia-e-a-corrida-pela-eficiencia-energetica", title: "Chips de IA: a corrida agora é por eficiência energética, não só por desempenho",
+    excerpt: "Data centers pressionam redes elétricas; fabricantes respondem com arquiteturas focadas em inferência e menor consumo por token.",
+    category: "Hardware", tags: ["chips", "energia", "data center"], date: "2026-02-20T11:00:00Z", readTime: 4, author: "Redação Nexo", cover: "green", popularity: 70,
+    body: [
+      P("O custo de treinar grandes modelos chamou atenção, mas é a **inferência** — atender bilhões de requisições por dia — que domina a conta de energia. A resposta da indústria é especialização: chips dedicados a inferência, memória mais próxima do processador e quantização agressiva."),
+      AD,
+      H("Consequências práticas"),
+      UL(["Preço por token continua caindo.", "Modelos menores e destilados ganham prioridade.", "Sustentabilidade vira métrica de escolha de fornecedor."]),
+    ],
+  }),
+  n({
+    slug: "open-source-em-ia-reduz-distancia-para-modelos-fechados", title: "Modelos open source reduzem distância para os fechados e mudam a economia da IA",
+    excerpt: "Com pesos abertos e licenças permissivas, empresas ganham controle e previsibilidade de custo.",
+    category: "Inteligência Artificial", tags: ["open source", "llm", "custos"], date: "2026-02-17T09:30:00Z", readTime: 4, author: "Redação Nexo", cover: "blue", popularity: 82,
+    body: [
+      P("A diferença de qualidade entre os melhores modelos abertos e fechados encolheu para poucos meses. Para muitas aplicações — atendimento, classificação, RAG — modelos abertos ajustados superam modelos fechados genéricos."),
+      H("Quando escolher open source"),
+      UL(["Dados sensíveis que não podem sair da infraestrutura.", "Volume alto onde custo por token importa.", "Necessidade de fine-tuning ou controle total do comportamento."]),
+      AD,
+      C("Atenção às licenças: 'pesos abertos' nem sempre significa uso comercial irrestrito.", "warn"),
+    ],
+  }),
+  n({
+    slug: "deepfakes-e-verificacao-de-conteudo", title: "Deepfakes: padrões de proveniência de conteúdo começam a ser adotados por plataformas",
+    excerpt: "Credenciais de conteúdo (C2PA) e marcas d'água invisíveis avançam como resposta à desinformação sintética.",
+    category: "Segurança", tags: ["deepfake", "segurança", "c2pa"], date: "2026-02-13T16:00:00Z", readTime: 5, author: "Redação Nexo", cover: "ink", popularity: 75,
+    body: [
+      P("A detecção de conteúdo sintético é uma corrida perdida: cada detector é superado pela próxima geração de modelos. A alternativa em consolidação é **proveniência**: assinar criptograficamente a origem e as edições de uma mídia."),
+      UL(["Câmeras e softwares de edição assinam metadados.", "Plataformas exibem o histórico de origem.", "Conteúdo sem credencial não é bloqueado, mas perde confiança."]),
+      AD,
+      C("Para se proteger: desconfie de urgência, verifique em múltiplas fontes e use busca reversa de imagens.", "tip"),
+    ],
+  }),
+  n({
+    slug: "educacao-e-ia-escolas-repensam-avaliacao", title: "Educação e IA: escolas repensam avaliação e apostam em processo, não em produto final",
+    excerpt: "Com redações e exercícios facilmente gerados, instituições migram para avaliações orais, projetos e defesa de raciocínio.",
+    category: "Educação", tags: ["educação", "ensino", "avaliação"], date: "2026-02-10T08:00:00Z", readTime: 4, author: "Redação Nexo", cover: "teal", popularity: 68,
+    body: [
+      P("Proibir a IA se mostrou ineficaz. A tendência é integrá-la como ferramenta declarada e avaliar o que ela não substitui: argumentação ao vivo, tomada de decisão, colaboração e capacidade de criticar a própria saída da IA."),
+      AD,
+      UL(["Rubricas que pontuam o processo (rascunhos, versões, justificativas).", "Uso de IA permitido com registro dos prompts usados.", "Foco em problemas locais e dados próprios da turma."]),
+    ],
+  }),
+  n({
+    slug: "assistentes-de-voz-com-llm-chegam-aos-carros-e-casas", title: "Assistentes de voz com LLM chegam a carros e casas — e finalmente entendem contexto",
+    excerpt: "A troca de comandos rígidos por conversas naturais reacende a categoria de assistentes pessoais.",
+    category: "Produtos", tags: ["voz", "assistentes", "iot"], date: "2026-02-06T13:00:00Z", readTime: 3, author: "Redação Nexo", cover: "violet", popularity: 64,
+    body: [
+      P("A primeira geração de assistentes de voz falhou na compreensão. Com modelos de linguagem e latência abaixo de 500 ms, é possível interromper, corrigir e encadear pedidos como em uma conversa."),
+      AD,
+      P("O desafio agora é **ação**: integrar de forma confiável com dispositivos e serviços sem que uma interpretação errada gere consequências físicas."),
+    ],
+  }),
+  n({
+    slug: "mercado-de-trabalho-e-ia-novas-funcoes", title: "Mercado de trabalho e IA: as funções que mais crescem exigem julgamento, não repetição",
+    excerpt: "Levantamentos de vagas apontam alta em papéis de orquestração, curadoria de dados e governança de IA.",
+    category: "Carreira", tags: ["carreira", "empregos", "habilidades"], date: "2026-02-03T09:00:00Z", readTime: 5, author: "Redação Nexo", cover: "amber", popularity: 86,
+    body: [
+      P("As tarefas mais automatizáveis são as previsíveis. As funções em crescimento combinam domínio de negócio com capacidade de definir problemas, avaliar saídas de IA e assumir responsabilidade pelas decisões."),
+      H("Habilidades em alta"),
+      UL(["Formulação de problemas e escrita de especificações claras.", "Avaliação crítica de resultados gerados por IA.", "Integração de sistemas e automação de fluxos.", "Comunicação e gestão de stakeholders."]),
+      AD,
+      C("Explore nossa central de prompts e ferramentas de produtividade para praticar essas habilidades no dia a dia.", "tip"),
+    ],
+  }),
 ];
